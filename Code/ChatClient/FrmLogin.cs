@@ -1,11 +1,16 @@
 using System;
 using System.Drawing;
+using System.IO;
 using System.Windows.Forms;
 
 namespace ChatApp
 {
     public partial class FrmLogin : Form
     {
+        private string selectedAvatarPath = "";
+
+        public static string SelectedAvatarPath { get; set; }
+
         public FrmLogin()
         {
             InitializeComponent();
@@ -17,6 +22,8 @@ namespace ChatApp
             txtPort.Text = "9999";
             lblStatus.Text = "Chua ket noi";
             lblStatus.ForeColor = Color.FromArgb(150, 150, 150);
+            SelectedAvatarPath = "";
+            selectedAvatarPath = "";
         }
 
         private void btnLogin_Click(object sender, EventArgs e)
@@ -47,15 +54,48 @@ namespace ChatApp
                 return;
             }
 
+            // Nhắc người dùng chọn avatar
+            OpenFileDialog openFileDialog = new OpenFileDialog();
+            openFileDialog.Filter = "Tệp hình ảnh (*.jpg;*.jpeg;*.png;*.bmp)|*.jpg;*.jpeg;*.png;*.bmp|Tất cả tệp (*.*)|*.*";
+            openFileDialog.Title = "Chọn avatar (hình đại diện)";
+            openFileDialog.CheckFileExists = true;
+
+            if (openFileDialog.ShowDialog() == DialogResult.OK)
+            {
+                selectedAvatarPath = openFileDialog.FileName;
+                SelectedAvatarPath = selectedAvatarPath;
+
+                // Kiểm tra kích thước file (tối đa 5MB)
+                FileInfo fileInfo = new FileInfo(selectedAvatarPath);
+                if (fileInfo.Length > 5 * 1024 * 1024)
+                {
+                    ShowError("File avatar quá lớn! Tối đa 5MB.");
+                    return;
+                }
+
+                // Kiểm tra định dạng file
+                string ext = Path.GetExtension(selectedAvatarPath).ToLower();
+                if (ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".bmp")
+                {
+                    ShowError("Định dạng file không hỗ trợ! Vui lòng chọn JPG, PNG hoặc BMP.");
+                    return;
+                }
+            }
+            else
+            {
+                ShowError("Vui lòng chọn một file avatar!");
+                return;
+            }
+
             SetConnectingState(true);
 
             try
             {
-                // 1. KẾT NỐI MẠNG THẬT (Ruột của Thành viên 2)
+                // Kết nối tới server
                 System.Net.Sockets.TcpClient client = new System.Net.Sockets.TcpClient();
                 client.Connect(ip, port);
 
-                // 2. Gửi lệnh báo danh lên Server
+                // Gửi lệnh đăng nhập lên Server
                 System.Net.Sockets.NetworkStream stream = client.GetStream();
                 string loginMsg = $"LOGIN|{username}";
                 byte[] data = System.Text.Encoding.UTF8.GetBytes(loginMsg);
@@ -64,14 +104,19 @@ namespace ChatApp
                 lblStatus.Text = "Đã kết nối thành công!";
                 lblStatus.ForeColor = Color.FromArgb(60, 160, 80);
 
-                // 3. Mở Form Chat và TRUYỀN cái luồng mạng (client) này sang cho Form Chat
+                // Mở Form Chat và truyền kết nối tới Form Chat
                 FrmChat chatForm = new FrmChat(username, client);
                 chatForm.Show();
                 this.Hide();
             }
-            catch (Exception)
+            catch (System.Net.Sockets.SocketException ex)
             {
-                ShowError("Không thể kết nối. Hãy kiểm tra xem Server đã bật chưa!");
+                ShowError($"Không thể kết nối. Hãy kiểm tra xem Server đã bật chưa! ({ex.Message})");
+                SetConnectingState(false);
+            }
+            catch (Exception ex)
+            {
+                ShowError($"Lỗi: {ex.Message}");
                 SetConnectingState(false);
             }
         }

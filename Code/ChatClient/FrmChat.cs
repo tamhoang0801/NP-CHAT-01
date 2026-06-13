@@ -14,12 +14,23 @@ namespace ChatApp
         private TcpClient _client;
         private NetworkStream _stream;
         private Thread _receiveThread;
+        private string _avatarFolder;
+        private System.Collections.Generic.Dictionary<string, Image> _avatarCache;
 
         public FrmChat(string username, TcpClient client)
         {
             _username = username;
             _client = client;
             _stream = _client.GetStream();
+            _avatarCache = new System.Collections.Generic.Dictionary<string, Image>();
+            _avatarFolder = Path.Combine(Application.StartupPath, "Avatars");
+
+            // Create avatar folder if it doesn't exist
+            if (!Directory.Exists(_avatarFolder))
+            {
+                Directory.CreateDirectory(_avatarFolder);
+            }
+
             InitializeComponent();
         }
 
@@ -30,7 +41,35 @@ namespace ChatApp
 
             AppendSystemMessage("Chào mừng " + _username + " đã kết nối vào phòng!");
 
-            // Bật luồng lắng nghe liên tục (TV2)
+            // Gửi avatar lên server nếu có
+            if (!string.IsNullOrEmpty(FrmLogin.SelectedAvatarPath) && File.Exists(FrmLogin.SelectedAvatarPath))
+            {
+                try
+                {
+                    SendAvatarToServer(FrmLogin.SelectedAvatarPath);
+
+                    // Lưu avatar vào máy
+                    try
+                    {
+                        string localAvatarPath = Path.Combine(_avatarFolder, $"{_username}.jpg");
+                        File.Copy(FrmLogin.SelectedAvatarPath, localAvatarPath, true);
+                    }
+                    catch (Exception ex)
+                    {
+                        AppendSystemMessage($"[Cảnh báo] Không thể lưu avatar cục bộ: {ex.Message}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AppendSystemMessage($"[Lỗi] Không thể gửi avatar: {ex.Message}");
+                }
+            }
+            else if (!string.IsNullOrEmpty(FrmLogin.SelectedAvatarPath))
+            {
+                AppendSystemMessage("[Cảnh báo] File avatar không tìm thấy!");
+            }
+
+            // Bật luồng lắng nghe liên tục
             _receiveThread = new Thread(ReceiveMessage);
             _receiveThread.IsBackground = true;
             _receiveThread.Start();
@@ -84,8 +123,27 @@ namespace ChatApp
                         // Gọi giao diện TV3 thông báo
                         AppendSystemMessage($"[Hệ thống] Bạn nhận được 1 {type}. Đã lưu tại: {savePath}");
                     }
+                    // NẾU LÀ AVATAR (0x12) -> Nhận avatar từ người khác
+                    else if (firstByte == 0x12)
+                    {
+                        byte[] header = new byte[9];
+                        int headerRead = socket.Receive(header, 9, SocketFlags.None);
+                        if (headerRead == 0) break;
 
-                    // NẾU LÀ CHỮ (TEXT) -> Luồng của TV2
+                        long dataSize = BitConverter.ToInt64(header, 1);
+                        byte[] payload = new byte[dataSize];
+                        int totalReceived = 0;
+
+                        while (totalReceived < dataSize)
+                        {
+                            int read = socket.Receive(payload, totalReceived, (int)(dataSize - totalReceived), SocketFlags.None);
+                            if (read == 0) break;
+                            totalReceived += read;
+                        }
+
+                        // Avatar sẽ được nhận sau khi có thông báo USER_ONLINE ở dạng text
+                    }
+                    // NẾU LÀ CHỮ (TEXT)
                     else
                     {
                         byte[] buffer = new byte[2048];
@@ -101,13 +159,37 @@ namespace ChatApp
                             string messageContent = tokens[1];
                             string time = DateTime.Now.ToString("HH:mm");
 
-                            if (messageContent.StartsWith("[Hệ thống]")) AppendSystemMessage(messageContent);
-                            else AppendOtherMessage("Người khác", messageContent, time);
+                            // Parse sender name from message (format: "SenderName: Message")
+                            string senderName = "Người khác";
+                            if (messageContent.Contains(": "))
+                            {
+                                int colonIndex = messageContent.IndexOf(": ");
+                                senderName = messageContent.Substring(0, colonIndex);
+                                messageContent = messageContent.Substring(colonIndex + 2);
+                            }
+
+                            if (senderName.StartsWith("[Hệ thống]")) 
+                                AppendSystemMessage(messageContent);
+                            else 
+                                AppendOtherMessage(senderName, messageContent, time);
                         }
                         else if (command == "UPDATE_ONLINE" && tokens.Length > 1)
                         {
                             string[] users = tokens[1].Split(',');
                             UpdateOnlineUsers(users);
+                        }
+                        else if (command == "USER_ONLINE" && tokens.Length > 1)
+                        {
+                            string username = tokens[1];
+                            AppendSystemMessage($"[Trực tuyến] {username} vừa đăng nhập!");
+
+                            // Chờ avatar tới (nó sẽ ở dạng dữ liệu nhị phân với header 0x12)
+                            System.Threading.Thread.Sleep(100);
+                        }
+                        else if (command == "USER_OFFLINE" && tokens.Length > 1)
+                        {
+                            string username = tokens[1];
+                            AppendSystemMessage($"[Ngoại tuyến] {username} vừa thoát!");
                         }
                     }
                 }
@@ -275,6 +357,33 @@ namespace ChatApp
             rtbChat.SelectionFont = new Font(rtbChat.Font, style);
             rtbChat.AppendText(text);
             rtbChat.SelectionColor = rtbChat.ForeColor;
+        }
+
+        private void SendAvatarToServer(string avatarPath)
+        {
+            try
+            {
+                if (!File.Exists(avatarPath))
+                    return;
+
+                byte[] avatarData = File.ReadAllBytes(avatarPath);
+
+                // Gửi avatar với header 0x12
+                byte[] header = new byte[9];
+                header[0] = 0x12; // Mã avatar
+                byte[] sizeBytes = BitConverter.GetBytes((long)avatarData.Length);
+                Array.Copy(sizeBytes, 0, header, 1, 8);
+
+                Socket socket = _client.Client;
+                socket.Send(header);
+                socket.Send(avatarData);
+
+                AppendSystemMessage("[Hệ thống] Đã gửi avatar lên server.");
+            }
+            catch (Exception ex)
+            {
+                AppendSystemMessage($"[Lỗi] Không thể gửi avatar: {ex.Message}");
+            }
         }
     }
 }

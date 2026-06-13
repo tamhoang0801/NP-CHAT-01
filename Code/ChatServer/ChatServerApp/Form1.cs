@@ -14,10 +14,18 @@ namespace ChatServerApp
         private Thread listenThread;
         private bool isRunning = false;
         private ConcurrentDictionary<string, TcpClient> onlineUsers = new ConcurrentDictionary<string, TcpClient>();
+        private ConcurrentDictionary<string, string> userAvatars = new ConcurrentDictionary<string, string>(); // tên_người_dùng -> tên_file_avatar
+        private string avatarFolder;
 
         public Form1()
         {
             InitializeComponent();
+            // Tạo thư mục lưu avatar trên server
+            avatarFolder = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "ServerAvatars");
+            if (!System.IO.Directory.Exists(avatarFolder))
+            {
+                System.IO.Directory.CreateDirectory(avatarFolder);
+            }
         }
 
         private void btnStart_Click(object sender, EventArgs e)
@@ -104,6 +112,33 @@ namespace ChatServerApp
                         BroadcastBytes(fullPacket, currentUsername);
                         LogMessage($"[FILE] {currentUsername} vừa gửi 1 tệp tin.");
                     }
+                    // --- LUỒNG 3: XỬ LÝ NHẬN AVATAR (0x12) ---
+                    else if (firstByte == 0x12)
+                    {
+                        byte[] header = new byte[9];
+                        int headerRead = socket.Receive(header, 9, SocketFlags.None);
+                        if (headerRead == 0) break;
+
+                        long dataSize = BitConverter.ToInt64(header, 1);
+                        byte[] payload = new byte[dataSize];
+                        int totalReceived = 0;
+
+                        while (totalReceived < dataSize)
+                        {
+                            int read = socket.Receive(payload, totalReceived, (int)(dataSize - totalReceived), SocketFlags.None);
+                            if (read == 0) throw new Exception("Mất kết nối khi nhận avatar");
+                            totalReceived += read;
+                        }
+
+                        // Lưu avatar
+                        if (!string.IsNullOrEmpty(currentUsername))
+                        {
+                            string avatarFile = System.IO.Path.Combine(avatarFolder, $"{currentUsername}.jpg");
+                            System.IO.File.WriteAllBytes(avatarFile, payload);
+                            userAvatars.AddOrUpdate(currentUsername, $"{currentUsername}.jpg", (k, v) => $"{currentUsername}.jpg");
+                            LogMessage($"[AVATAR] {currentUsername} đã cập nhật avatar.");
+                        }
+                    }
                     // --- LUỒNG 2: XỬ LÝ NHẬN CHỮ (TEXT) ---
                     else
                     {
@@ -128,9 +163,15 @@ namespace ChatServerApp
                                         LogMessage($"[ĐĂNG NHẬP] {currentUsername} đã vào phòng.");
                                         UpdateStatusUI();
 
+                                        // Send existing online users + avatars to this new client
+                                        SendExistingUsersToClient(client);
+
                                         // Gửi danh sách Online mới nhất cho tất cả Client
                                         string userList = string.Join(",", onlineUsers.Keys);
                                         BroadcastString($"UPDATE_ONLINE|{userList}");
+
+                                        // Broadcast thông báo USER_ONLINE
+                                        BroadcastString($"USER_ONLINE|{currentUsername}");
 
                                         BroadcastString($"BROADCAST|[Hệ thống] {currentUsername} đã vào phòng!");
                                     }
@@ -159,11 +200,13 @@ namespace ChatServerApp
                 if (!string.IsNullOrEmpty(currentUsername))
                 {
                     onlineUsers.TryRemove(currentUsername, out _);
+                    userAvatars.TryRemove(currentUsername, out _);
                     LogMessage($"[NGẮT KẾT NỐI] {currentUsername} đã rời đi.");
 
-                    // Cập nhật lại danh sách Online khi có người thoát
+                    // Broadcast USER_OFFLINE notification
                     string userList = string.Join(",", onlineUsers.Keys);
                     BroadcastString($"UPDATE_ONLINE|{userList}");
+                    BroadcastString($"USER_OFFLINE|{currentUsername}");
 
                     BroadcastString($"BROADCAST|[Hệ thống] {currentUsername} đã thoát!");
                 }
@@ -178,6 +221,40 @@ namespace ChatServerApp
             {
                 byte[] data = Encoding.UTF8.GetBytes(rawMessage);
                 targetClient.GetStream().Write(data, 0, data.Length);
+            }
+            catch { }
+        }
+
+        // Gửi danh sách người dùng hiện tại và avatar của họ cho client mới kết nối
+        private void SendExistingUsersToClient(TcpClient newClient)
+        {
+            try
+            {
+                NetworkStream stream = newClient.GetStream();
+                foreach (var user in onlineUsers)
+                {
+                    string username = user.Key;
+                    string message = $"USER_ONLINE|{username}";
+                    byte[] data = Encoding.UTF8.GetBytes(message);
+                    stream.Write(data, 0, data.Length);
+
+                    // Gửi avatar nếu có
+                    if (userAvatars.TryGetValue(username, out string avatarFile))
+                    {
+                        string avatarPath = System.IO.Path.Combine(avatarFolder, avatarFile);
+                        if (System.IO.File.Exists(avatarPath))
+                        {
+                            byte[] avatarData = System.IO.File.ReadAllBytes(avatarPath);
+                            byte[] header = new byte[9];
+                            header[0] = 0x12; // Mã avatar
+                            byte[] sizeBytes = BitConverter.GetBytes((long)avatarData.Length);
+                            Array.Copy(sizeBytes, 0, header, 1, 8);
+
+                            stream.Write(header, 0, 9);
+                            stream.Write(avatarData, 0, avatarData.Length);
+                        }
+                    }
+                }
             }
             catch { }
         }
