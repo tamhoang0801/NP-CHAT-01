@@ -51,11 +51,11 @@ namespace ChatApp
 
             try
             {
-                // 1. KẾT NỐI MẠNG THẬT (Ruột của Thành viên 2)
+
                 System.Net.Sockets.TcpClient client = new System.Net.Sockets.TcpClient();
                 client.Connect(ip, port);
 
-                // 2. Gửi lệnh báo danh lên Server
+
                 System.Net.Sockets.NetworkStream stream = client.GetStream();
                 string loginMsg = $"LOGIN|{username}";
                 byte[] data = System.Text.Encoding.UTF8.GetBytes(loginMsg);
@@ -64,7 +64,6 @@ namespace ChatApp
                 lblStatus.Text = "Đã kết nối thành công!";
                 lblStatus.ForeColor = Color.FromArgb(60, 160, 80);
 
-                // 3. Mở Form Chat và TRUYỀN cái luồng mạng (client) này sang cho Form Chat
                 FrmChat chatForm = new FrmChat(username, client);
                 chatForm.Show();
                 this.Hide();

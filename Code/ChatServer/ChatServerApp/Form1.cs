@@ -64,21 +64,21 @@ namespace ChatServerApp
         private void HandleClient(TcpClient client)
         {
             NetworkStream stream = client.GetStream();
-            Socket socket = client.Client; // Lấy Socket gốc để dùng tính năng Peek (Nhìn lén)
+            Socket socket = client.Client;
             string currentUsername = "";
 
             try
             {
                 while (isRunning)
                 {
-                    // 1. NHÌN LÉN 1 BYTE ĐẦU TIÊN (Để biết là Gửi File hay Gửi Chữ)
+                    // NHÌN LÉN 1 BYTE ĐẦU TIÊN
                     byte[] peekBuffer = new byte[1];
                     int peekBytes = socket.Receive(peekBuffer, 1, SocketFlags.Peek);
-                    if (peekBytes == 0) break; // Client ngắt kết nối
+                    if (peekBytes == 0) break;
 
                     byte firstByte = peekBuffer[0];
 
-                    // --- LUỒNG 1: XỬ LÝ NHẬN FILE (0x10: Ảnh, 0x11: Video) ---
+                    // XỬ LÝ NHẬN FILE (0x10: Ảnh, 0x11: Video) 
                     if (firstByte == 0x10 || firstByte == 0x11)
                     {
                         byte[] header = new byte[9];
@@ -104,7 +104,7 @@ namespace ChatServerApp
                         BroadcastBytes(fullPacket, currentUsername);
                         LogMessage($"[FILE] {currentUsername} vừa gửi 1 tệp tin.");
                     }
-                    // --- LUỒNG 2: XỬ LÝ NHẬN CHỮ (TEXT) ---
+                    // XỬ LÝ NHẬN   CHỮ (TEXT) 
                     else
                     {
                         byte[] buffer = new byte[2048];
@@ -131,7 +131,7 @@ namespace ChatServerApp
                                         // Gửi danh sách Online mới nhất cho tất cả Client
                                         string userList = string.Join(",", onlineUsers.Keys);
                                         BroadcastString($"UPDATE_ONLINE|{userList}");
-
+                                        Thread.Sleep(50);
                                         BroadcastString($"BROADCAST|[Hệ thống] {currentUsername} đã vào phòng!");
                                     }
                                 }

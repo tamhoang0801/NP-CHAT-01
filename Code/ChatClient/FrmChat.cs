@@ -8,7 +8,7 @@ using System.Windows.Forms;
 
 namespace ChatApp
 {
-    public partial class FrmChat : Form
+    public partial class    FrmChat : Form
     {
         private readonly string _username;
         private TcpClient _client;
@@ -21,6 +21,49 @@ namespace ChatApp
             _client = client;
             _stream = _client.GetStream();
             InitializeComponent();
+
+            this.pnlTop.Paint += (s, e) =>
+            {
+                e.Graphics.DrawLine(
+                    new System.Drawing.Pen(System.Drawing.Color.FromArgb(204, 204, 204), 1),
+                    0, this.pnlTop.Height - 1, this.pnlTop.Width, this.pnlTop.Height - 1);
+            };
+
+            this.btnLogout.MouseEnter += (s, e) => this.btnLogout.BackColor = System.Drawing.Color.FromArgb(210, 210, 210);
+            this.btnLogout.MouseLeave += (s, e) => this.btnLogout.BackColor = System.Drawing.Color.FromArgb(224, 224, 224);
+
+            this.pnlLeft.Paint += (s, e) =>
+            {
+                e.Graphics.DrawLine(
+                    new System.Drawing.Pen(System.Drawing.Color.FromArgb(204, 204, 204), 1),
+                    this.pnlLeft.Width - 1, 0, this.pnlLeft.Width - 1, this.pnlLeft.Height);
+            };
+
+            this.pnlFileBar.Paint += (s, e) =>
+            {
+                e.Graphics.DrawLine(
+                    new System.Drawing.Pen(System.Drawing.Color.FromArgb(204, 204, 204), 1),
+                    0, 0, this.pnlFileBar.Width, 0);
+            };
+
+            this.btnSendImage.MouseEnter += (s, e) => this.btnSendImage.BackColor = System.Drawing.Color.FromArgb(210, 210, 210);
+            this.btnSendImage.MouseLeave += (s, e) => this.btnSendImage.BackColor = System.Drawing.Color.FromArgb(224, 224, 224);
+
+            this.btnSendVideo.MouseEnter += (s, e) => this.btnSendVideo.BackColor = System.Drawing.Color.FromArgb(210, 210, 210);
+            this.btnSendVideo.MouseLeave += (s, e) => this.btnSendVideo.BackColor = System.Drawing.Color.FromArgb(224, 224, 224);
+
+            this.pnlInput.Paint += (s, e) =>
+            {
+                e.Graphics.DrawLine(
+                    new System.Drawing.Pen(System.Drawing.Color.FromArgb(204, 204, 204), 1),
+                    0, 0, this.pnlInput.Width, 0);
+            };
+
+            this.btnSend.MouseEnter += (s, e) => this.btnSend.BackColor = System.Drawing.Color.FromArgb(210, 210, 210);
+            this.btnSend.MouseLeave += (s, e) => this.btnSend.BackColor = System.Drawing.Color.FromArgb(224, 224, 224);
+
+            this.FormClosed += (sender, e) => Environment.Exit(0);
+
         }
 
         private void FrmChat_Load(object sender, EventArgs e)
@@ -30,43 +73,41 @@ namespace ChatApp
 
             AppendSystemMessage("Chào mừng " + _username + " đã kết nối vào phòng!");
 
-            // Bật luồng lắng nghe liên tục (TV2)
+            // Bật luồng lắng nghe liên tục
             _receiveThread = new Thread(ReceiveMessage);
             _receiveThread.IsBackground = true;
             _receiveThread.Start();
         }
 
-        // =========================================================
-        // PHẦN 1: NHẬN DỮ LIỆU (Chữ của TV2 & File của TV4)
-        // =========================================================
+
         private void ReceiveMessage()
         {
-            Socket socket = _client.Client; // Lấy lõi Socket để dùng tính năng Peek
+            Socket socket = _client.Client;
             while (_stream != null)
             {
                 try
                 {
-                    // Thuật toán của TV4: Nhìn lén 1 byte đầu tiên xem có phải là File không
+
                     byte[] peekBuffer = new byte[1];
                     int peekBytes = socket.Receive(peekBuffer, 1, SocketFlags.Peek);
-                    if (peekBytes == 0) break; // Mất kết nối
+                    if (peekBytes == 0) break;
 
                     byte firstByte = peekBuffer[0];
 
-                    // NẾU LÀ FILE (0x10: Ảnh, 0x11: Video) -> Luồng của TV4
+                    // NẾU LÀ FILE (0x10: Ảnh, 0x11: Video)
                     if (firstByte == 0x10 || firstByte == 0x11)
                     {
-                        // 1. Rút 9 byte phần đầu (1 byte loại file + 8 byte kích thước)
+                        // Rút 9 byte phần đầu (1 byte loại file + 8 byte kích thước)
                         byte[] header = new byte[9];
                         int headerRead = socket.Receive(header, 9, SocketFlags.None);
                         if (headerRead == 0) break;
 
-                        // 2. Tính toán dung lượng file
+                        // Tính toán dung lượng file
                         long dataSize = BitConverter.ToInt64(header, 1);
                         byte[] payload = new byte[dataSize];
                         int totalReceived = 0;
 
-                        // 3. Tải từ từ cho đến khi đủ dung lượng
+                        // Tải từ từ cho đến khi đủ dung lượng
                         while (totalReceived < dataSize)
                         {
                             int read = socket.Receive(payload, totalReceived, (int)(dataSize - totalReceived), SocketFlags.None);
@@ -74,18 +115,17 @@ namespace ChatApp
                             totalReceived += read;
                         }
 
-                        // 4. Lưu file vào máy
+                        // Lưu file vào máy
                         string type = firstByte == 0x10 ? "Ảnh" : "Video";
                         string ext = firstByte == 0x10 ? ".jpg" : ".mp4";
                         string fileName = $"Nhan_{type}_{DateTime.Now:yyyyMMdd_HHmmss}{ext}";
                         string savePath = Path.Combine(Application.StartupPath, fileName);
                         File.WriteAllBytes(savePath, payload);
 
-                        // Gọi giao diện TV3 thông báo
                         AppendSystemMessage($"[Hệ thống] Bạn nhận được 1 {type}. Đã lưu tại: {savePath}");
                     }
 
-                    // NẾU LÀ CHỮ (TEXT) -> Luồng của TV2
+                    // NẾU LÀ CHỮ (TEXT)
                     else
                     {
                         byte[] buffer = new byte[2048];
@@ -101,8 +141,27 @@ namespace ChatApp
                             string messageContent = tokens[1];
                             string time = DateTime.Now.ToString("HH:mm");
 
-                            if (messageContent.StartsWith("[Hệ thống]")) AppendSystemMessage(messageContent);
-                            else AppendOtherMessage("Người khác", messageContent, time);
+                            // Nếu là tin nhắn của hệ thống
+                            if (messageContent.StartsWith("[Hệ thống]"))
+                            {
+                                AppendSystemMessage(messageContent);
+                            }
+                            else
+                            {
+                                string senderName = "Người khác";
+
+                                if (messageContent.Contains(": "))
+                                {
+                                    int colonIndex = messageContent.IndexOf(": ");
+
+                                    senderName = messageContent.Substring(0, colonIndex);
+
+
+                                    messageContent = messageContent.Substring(colonIndex + 2);
+                                }
+
+                                AppendOtherMessage(senderName, messageContent, time);
+                            }
                         }
                         else if (command == "UPDATE_ONLINE" && tokens.Length > 1)
                         {
@@ -115,18 +174,14 @@ namespace ChatApp
             }
         }
 
-        // =========================================================
-        // PHẦN 2: GỬI DỮ LIỆU (Chữ của TV2 & File của TV4)
-        // =========================================================
 
-        // Gửi chữ (TV2)
         private void SendTextMessage()
         {
             string content = txtMessage.Text.Trim();
             if (content == "") return;
 
             string time = DateTime.Now.ToString("HH:mm");
-            AppendMyMessage(_username, content, time); // Giao diện TV3
+            AppendMyMessage(_username, content, time);
 
             try
             {
@@ -151,7 +206,7 @@ namespace ChatApp
             }
         }
 
-        // Thuật toán Gửi File (TV4)
+
         private void SendFile(byte typeCode, string filter)
         {
             using (OpenFileDialog ofd = new OpenFileDialog() { Filter = filter })
@@ -163,7 +218,7 @@ namespace ChatApp
                         // Đọc file thành Byte
                         byte[] fileData = File.ReadAllBytes(ofd.FileName);
 
-                        // Đóng gói: 1 byte mã loại + 8 byte kích thước
+                        // 1 byte mã loại + 8 byte kích thước
                         byte[] header = new byte[9];
                         header[0] = typeCode;
                         byte[] sizeBytes = BitConverter.GetBytes((long)fileData.Length);
@@ -185,7 +240,6 @@ namespace ChatApp
             }
         }
 
-        // 2 Nút bấm gọi thuật toán gửi file
         private void btnSendImage_Click(object sender, EventArgs e)
         {
             SendFile(0x10, "Image Files|*.jpg;*.jpeg;*.png;*.gif;*.bmp");
@@ -208,9 +262,6 @@ namespace ChatApp
             Environment.Exit(0);
         }
 
-        // =========================================================
-        // PHẦN 3: GIAO DIỆN (Hàm hiển thị của TV3 - Giữ nguyên)
-        // =========================================================
 
         public void UpdateOnlineUsers(string[] onlineList)
         {
