@@ -90,7 +90,11 @@ namespace ChatApp
 
                     byte[] peekBuffer = new byte[1];
                     int peekBytes = socket.Receive(peekBuffer, 1, SocketFlags.Peek);
-                    if (peekBytes == 0) break;
+                    if (peekBytes == 0)
+                    {
+                        HandleDisconnect("Server ngừng hoạt động.");
+                        break;
+                    }
 
                     byte firstByte = peekBuffer[0];
 
@@ -100,7 +104,11 @@ namespace ChatApp
                         // Rút 9 byte phần đầu (1 byte loại file + 8 byte kích thước)
                         byte[] header = new byte[9];
                         int headerRead = socket.Receive(header, 9, SocketFlags.None);
-                        if (headerRead == 0) break;
+                        if (headerRead == 0)
+                        {
+                            HandleDisconnect("Mất kết nối khi đang nhận file.");
+                            break;
+                        }
 
                         // Tính toán dung lượng file
                         long dataSize = BitConverter.ToInt64(header, 1);
@@ -130,7 +138,11 @@ namespace ChatApp
                     {
                         byte[] buffer = new byte[2048];
                         int bytesRead = socket.Receive(buffer, 0, buffer.Length, SocketFlags.None);
-                        if (bytesRead == 0) break;
+                        if (bytesRead == 0)
+                        {
+                            HandleDisconnect("Mất kết nối với Server.");
+                            break;
+                        }
 
                         string rawData = Encoding.UTF8.GetString(buffer, 0, bytesRead);
                         string[] tokens = rawData.Split('|');
@@ -145,22 +157,50 @@ namespace ChatApp
                             if (messageContent.StartsWith("[Hệ thống]"))
                             {
                                 AppendSystemMessage(messageContent);
+                                if (messageContent.Contains("đóng cửa"))
+                                {
+                                    this.Invoke(new Action(() =>
+                                    {
+                                        System.Diagnostics.Process.Start(Application.ExecutablePath);
+                                        Environment.Exit(0);
+                                    }));
+                                    return;
+                                }
                             }
                             else
                             {
-                                string senderName = "Người khác";
 
-                                if (messageContent.Contains(": "))
+                                if (messageContent.Contains("đóng cửa"))
                                 {
-                                    int colonIndex = messageContent.IndexOf(": ");
+                                    this.Invoke(new Action(() =>
+                                    {
+                                        MessageBox.Show("Server đã đóng cửa!.", "Mất kết nối", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
-                                    senderName = messageContent.Substring(0, colonIndex);
+                                        Application.Restart();
+                                        Environment.Exit(0); // Ép hệ thống dọn dẹp sạch tiến trình cũ
 
+                                    }));
 
-                                    messageContent = messageContent.Substring(colonIndex + 2);
+                                    return; // Cắt đứt luồng ngầm
                                 }
 
-                                AppendOtherMessage(senderName, messageContent, time);
+                                int colonIndex = messageContent.IndexOf(':');
+
+                                if (colonIndex > 0)
+                                {
+
+                                    if (messageContent.Contains(": "))
+                                    {
+
+                                        string senderName = messageContent.Substring(0, colonIndex).Trim();
+
+                                        string actualContent = messageContent.Substring(colonIndex + 1).Trim();
+                                         
+                                        // In ra màn hình
+                                        AppendOtherMessage(senderName, actualContent, time);
+                                    }
+                                }
+
                             }
                         }
                         else if (command == "UPDATE_ONLINE" && tokens.Length > 1)
@@ -170,10 +210,43 @@ namespace ChatApp
                         }
                     }
                 }
-                catch { break; }
+                catch
+                {
+                    if (this.IsDisposed || !this.IsHandleCreated) return;
+
+                    try
+                    {
+                        this.Invoke(new Action(() =>
+                        {
+                            if (this.IsDisposed) return;
+
+                            MessageBox.Show("Đường truyền bị đứt!.", "Lỗi mạng", MessageBoxButtons.OK, MessageBoxIcon.Error);
+
+                            System.Diagnostics.Process.Start(Application.ExecutablePath);
+                            Environment.Exit(0);
+                        }));
+                    }
+                    catch { }
+
+                    return;
+                }
             }
         }
 
+
+        private void HandleDisconnect(string reason)
+        {
+            if (this.IsDisposed || !this.IsHandleCreated) return; // Nếu form đã đóng từ trước thì thôi bỏ qua
+
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new MethodInvoker(delegate { HandleDisconnect(reason); }));
+                return;
+            }
+
+            MessageBox.Show(reason, "Lỗi kết nối", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            this.Close();
+        }
 
         private void SendTextMessage()
         {

@@ -26,6 +26,8 @@ namespace ChatServerApp
             {
                 int port = int.Parse(txtPort.Text);
                 server = new TcpListener(IPAddress.Any, port);
+                server.Start();
+
                 isRunning = true;
 
                 listenThread = new Thread(ListenForClients);
@@ -42,6 +44,8 @@ namespace ChatServerApp
             catch (Exception ex)
             {
                 MessageBox.Show("Lỗi khởi chạy: " + ex.Message);
+
+                server?.Stop();
             }
         }
 
@@ -49,7 +53,6 @@ namespace ChatServerApp
         {
             try
             {
-                server.Start();
                 while (isRunning)
                 {
                     TcpClient client = server.AcceptTcpClient();
@@ -84,8 +87,8 @@ namespace ChatServerApp
                         byte[] header = new byte[9];
                         int headerRead = socket.Receive(header, 9, SocketFlags.None);
                         if (headerRead == 0) break;
-
                         long dataSize = BitConverter.ToInt64(header, 1);
+
                         byte[] payload = new byte[dataSize];
                         int totalReceived = 0;
 
@@ -134,6 +137,18 @@ namespace ChatServerApp
                                         Thread.Sleep(50);
                                         BroadcastString($"BROADCAST|[Hệ thống] {currentUsername} đã vào phòng!");
                                     }
+                                    else
+                                    {
+                                        LogMessage($"[TỪ CHỐI] {currentUsername} đăng nhập trùng tên.");
+
+                                        // 2. TỪ CHỐI: Gửi vé 'ERROR' kèm lời chửi thẳng về cho Client
+                                        byte[] errorData = Encoding.UTF8.GetBytes("ERROR|Tên đăng nhập đã tồn tại!");
+                                        stream.Write(errorData, 0, errorData.Length);
+
+                                        // 3. Khóa van và giết luồng
+                                        client.Close();
+                                        return;
+                                    }
                                 }
                                 break;
 
@@ -164,7 +179,7 @@ namespace ChatServerApp
                     // Cập nhật lại danh sách Online khi có người thoát
                     string userList = string.Join(",", onlineUsers.Keys);
                     BroadcastString($"UPDATE_ONLINE|{userList}");
-
+                    Thread.Sleep(60);
                     BroadcastString($"BROADCAST|[Hệ thống] {currentUsername} đã thoát!");
                 }
                 client.Close();
@@ -189,7 +204,16 @@ namespace ChatServerApp
             {
                 if (user.Key != excludeUsername)
                 {
-                    try { user.Value.GetStream().Write(data, 0, data.Length); }
+                    try 
+                    {
+
+                        NetworkStream targetStream = user.Value.GetStream();
+
+                        lock (targetStream)
+                        {
+                            targetStream.Write(data, 0, data.Length);
+                        }
+                    }
                     catch { }
                 }
             }
@@ -202,10 +226,22 @@ namespace ChatServerApp
 
             foreach (var user in onlineUsers)
             {
-                user.Value.Close();
+                try
+                {
+                    // Bắn thêm một câu chót để Client biết đường mà tự cút (Tùy chọn)
+                    byte[] endMsg = Encoding.UTF8.GetBytes("BROADCAST|[Hệ thống] Server đã đóng cửa!|");
+                    user.Value.GetStream().Write(endMsg, 0, endMsg.Length);
+
+                    // Cắt đứt đường ống
+                    user.Value.Close();
+                }
+                catch
+                {
+                    // Nếu thằng này lỗi rồi thì lơ đi, lôi đầu thằng tiếp theo ra đóng!
+                }
             }
             onlineUsers.Clear();
-            server?.Stop();
+            try { server?.Stop(); } catch { } // Chống sập lúc Stop Server
 
             LogMessage("[HỆ THỐNG] Server đã dừng.");
             UpdateStatusUI();

@@ -54,9 +54,8 @@ namespace ChatApp
 
                 System.Net.Sockets.TcpClient client = new System.Net.Sockets.TcpClient();
                 client.Connect(ip, port);
-
-
                 System.Net.Sockets.NetworkStream stream = client.GetStream();
+
                 string loginMsg = $"LOGIN|{username}";
                 byte[] data = System.Text.Encoding.UTF8.GetBytes(loginMsg);
                 stream.Write(data, 0, data.Length);
