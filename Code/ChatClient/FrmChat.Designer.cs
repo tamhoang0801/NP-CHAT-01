@@ -4,292 +4,513 @@ namespace ChatApp
     {
         private System.ComponentModel.IContainer components = null;
 
-        private System.Windows.Forms.Panel       pnlTop;
-        private System.Windows.Forms.Panel       pnlLeft;
-        private System.Windows.Forms.Panel       pnlCenter;
-        private System.Windows.Forms.Panel       pnlInput;
-        private System.Windows.Forms.Panel       pnlFileBar;
-        private System.Windows.Forms.Label       lblCurrentUser;
-        private System.Windows.Forms.Button      btnLogout;
-        private System.Windows.Forms.Label       lblOnlineTitle;
-        private System.Windows.Forms.Label       lblOnlineCount;
-        private System.Windows.Forms.ListBox     lstOnlineUsers;
-        private System.Windows.Forms.RichTextBox rtbChat;
-        private System.Windows.Forms.TextBox     txtMessage;
-        private System.Windows.Forms.Button      btnSend;
-        private System.Windows.Forms.Button      btnSendImage;
-        private System.Windows.Forms.Button      btnSendVideo;
-        private System.Windows.Forms.Label       lblFileName;
-        private System.Windows.Forms.ProgressBar progressBar;
+        private Panel pnlTop;
+        private Panel pnlLeft;
+        private Panel pnlCenter;
+        private Panel pnlInput;
+        private Panel pnlFileBar;
+
+        private Label lblCurrentUser;
+        private Label lblStatus;
+        private Button btnLogout;
+
+        private Label lblOnlineTitle;
+        private Label lblOnlineCount;
+
+        private ListBox lstOnlineUsers;
+
+        private RichTextBox rtbChat;
+
+        private TextBox txtMessage;
+
+        private Button btnSend;
+        private Button btnEmoji;
+
+        private Button btnSendImage;
+        private Button btnSendVideo;
+
+        private Label lblFileName;
+        private ProgressBar progressBar;
+
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing && (components != null)) components.Dispose();
+            if(disposing && components != null)
+                components.Dispose();
+
             base.Dispose(disposing);
         }
 
+
+
         private void InitializeComponent()
         {
+
             pnlTop = new Panel();
-            lblCurrentUser = new Label();
-            btnLogout = new Button();
             pnlLeft = new Panel();
+            pnlCenter = new Panel();
+
+            pnlInput = new Panel();
+            pnlFileBar = new Panel();
+
+
+            lblCurrentUser = new Label();
+            lblStatus = new Label();
+
+            btnLogout = new Button();
+
+
             lblOnlineTitle = new Label();
             lblOnlineCount = new Label();
+
             lstOnlineUsers = new ListBox();
-            pnlCenter = new Panel();
+
+
             rtbChat = new RichTextBox();
-            pnlInput = new Panel();
+
+
             txtMessage = new TextBox();
+
             btnSend = new Button();
-            pnlFileBar = new Panel();
+            btnEmoji = new Button();
+
+
             btnSendImage = new Button();
             btnSendVideo = new Button();
+
+
             lblFileName = new Label();
+
             progressBar = new ProgressBar();
-            pnlTop.SuspendLayout();
-            pnlLeft.SuspendLayout();
-            pnlCenter.SuspendLayout();
-            pnlInput.SuspendLayout();
-            pnlFileBar.SuspendLayout();
+
+
+
             SuspendLayout();
-            // 
-            // pnlTop
-            // 
-            pnlTop.BackColor = Color.White;
+
+
+
+            // ================= TOP =================
+
+
+            pnlTop.Dock =
+                DockStyle.Top;
+
+            pnlTop.Height =
+                70;
+
+            pnlTop.BackColor =
+                Color.White;
+
+
+
+            lblCurrentUser.AutoSize=false;
+
+            lblCurrentUser.Size =
+                new Size(500,35);
+
+            lblCurrentUser.Location =
+                new Point(20,8);
+
+            lblCurrentUser.Font =
+                new Font(
+                "Segoe UI",
+                14,
+                FontStyle.Bold);
+
+
+
+            lblStatus.AutoSize=true;
+
+            lblStatus.Location =
+                new Point(25,42);
+
+            lblStatus.ForeColor =
+                Color.Green;
+
+            lblStatus.Text =
+                "🟢 Online";
+
+
+
+            btnLogout.Dock =
+                DockStyle.Right;
+
+            btnLogout.Width =
+                120;
+
+            btnLogout.Text =
+                "Đăng xuất";
+
+            btnLogout.BackColor =
+                Color.FromArgb(255,90,90);
+
+            btnLogout.ForeColor =
+                Color.White;
+
+            btnLogout.FlatStyle =
+                FlatStyle.Flat;
+
+            btnLogout.FlatAppearance.BorderSize=0;
+
+            btnLogout.Click +=
+                btnLogout_Click;
+
+
+
             pnlTop.Controls.Add(lblCurrentUser);
+            pnlTop.Controls.Add(lblStatus);
             pnlTop.Controls.Add(btnLogout);
-            pnlTop.Dock = DockStyle.Top;
-            pnlTop.Location = new Point(0, 0);
-            pnlTop.Name = "pnlTop";
-            pnlTop.Size = new Size(984, 52);
-            pnlTop.TabIndex = 2;
-            // 
-            // lblCurrentUser
-            // 
-            lblCurrentUser.Dock = DockStyle.Fill;
-            lblCurrentUser.Font = new Font("Segoe UI", 11F, FontStyle.Bold);
-            lblCurrentUser.ForeColor = Color.FromArgb(50, 50, 50);
-            lblCurrentUser.Location = new Point(0, 0);
-            lblCurrentUser.Name = "lblCurrentUser";
-            lblCurrentUser.Padding = new Padding(16, 0, 0, 0);
-            lblCurrentUser.Size = new Size(874, 52);
-            lblCurrentUser.TabIndex = 0;
-            lblCurrentUser.TextAlign = ContentAlignment.MiddleLeft;
-            // 
-            // btnLogout
-            // 
-            btnLogout.BackColor = Color.FromArgb(224, 224, 224);
-            btnLogout.Cursor = Cursors.Hand;
-            btnLogout.Dock = DockStyle.Right;
-            btnLogout.FlatAppearance.BorderColor = Color.FromArgb(180, 180, 180);
-            btnLogout.FlatStyle = FlatStyle.Flat;
-            btnLogout.Font = new Font("Segoe UI", 9.5F, FontStyle.Bold);
-            btnLogout.ForeColor = Color.FromArgb(50, 50, 50);
-            btnLogout.Location = new Point(874, 0);
-            btnLogout.Name = "btnLogout";
-            btnLogout.Size = new Size(110, 52);
-            btnLogout.TabIndex = 1;
-            btnLogout.Text = "Dang xuat";
-            btnLogout.UseVisualStyleBackColor = false;
-            btnLogout.Click += btnLogout_Click;
-            // 
-            // pnlLeft
-            // 
-            pnlLeft.BackColor = Color.White;
+
+
+
+
+
+            // ================= LEFT =================
+
+
+
+            pnlLeft.Dock =
+                DockStyle.Left;
+
+
+            pnlLeft.Width =
+                220;
+
+
+            pnlLeft.BackColor =
+                Color.FromArgb(32,42,68);
+
+
+
+            lblOnlineTitle.Text =
+                "NGƯỜI DÙNG";
+
+
+            lblOnlineTitle.ForeColor =
+                Color.White;
+
+
+            lblOnlineTitle.Font =
+                new Font(
+                "Segoe UI",
+                11,
+                FontStyle.Bold);
+
+
+            lblOnlineTitle.Location =
+                new Point(20,20);
+
+
+
+
+            lblOnlineCount.Text =
+                "Online: 0";
+
+
+            lblOnlineCount.ForeColor =
+                Color.LightGreen;
+
+
+            lblOnlineCount.Location =
+                new Point(20,50);
+
+
+
+
+            lstOnlineUsers.Location =
+                new Point(0,85);
+
+
+            lstOnlineUsers.Size =
+                new Size(
+                220,
+                500);
+
+
+            lstOnlineUsers.BorderStyle =
+                BorderStyle.None;
+
+
+            lstOnlineUsers.BackColor =
+                Color.FromArgb(32,42,68);
+
+
+            lstOnlineUsers.ForeColor =
+                Color.White;
+
+
+            lstOnlineUsers.Font =
+                new Font(
+                "Segoe UI",
+                11);
+
+
+
+
             pnlLeft.Controls.Add(lblOnlineTitle);
             pnlLeft.Controls.Add(lblOnlineCount);
             pnlLeft.Controls.Add(lstOnlineUsers);
-            pnlLeft.Dock = DockStyle.Left;
-            pnlLeft.Location = new Point(0, 52);
-            pnlLeft.Name = "pnlLeft";
-            pnlLeft.Size = new Size(200, 569);
-            pnlLeft.TabIndex = 1;
-            // 
-            // lblOnlineTitle
-            // 
-            lblOnlineTitle.Font = new Font("Segoe UI", 7.5F, FontStyle.Bold);
-            lblOnlineTitle.ForeColor = Color.FromArgb(100, 100, 100);
-            lblOnlineTitle.Location = new Point(12, 12);
-            lblOnlineTitle.Name = "lblOnlineTitle";
-            lblOnlineTitle.Size = new Size(120, 18);
-            lblOnlineTitle.TabIndex = 0;
-            lblOnlineTitle.Text = "NGUOI DUNG";
-            // 
-            // lblOnlineCount
-            // 
-            lblOnlineCount.Font = new Font("Segoe UI", 7.5F);
-            lblOnlineCount.ForeColor = Color.FromArgb(80, 160, 80);
-            lblOnlineCount.Location = new Point(125, 12);
-            lblOnlineCount.Name = "lblOnlineCount";
-            lblOnlineCount.Size = new Size(70, 18);
-            lblOnlineCount.TabIndex = 1;
-            lblOnlineCount.Text = "Online: 0";
-            // 
-            // lstOnlineUsers
-            // 
-            lstOnlineUsers.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            lstOnlineUsers.BackColor = Color.White;
-            lstOnlineUsers.BorderStyle = BorderStyle.None;
-            lstOnlineUsers.Font = new Font("Segoe UI", 10F);
-            lstOnlineUsers.ForeColor = Color.FromArgb(60, 60, 60);
-            lstOnlineUsers.Location = new Point(0, 36);
-            lstOnlineUsers.Name = "lstOnlineUsers";
-            lstOnlineUsers.Size = new Size(200, 986);
-            lstOnlineUsers.TabIndex = 2;
-            // 
-            // pnlCenter
-            // 
+
+
+
+
+
+
+            // ================= CHAT =================
+
+
+
+            pnlCenter.Dock =
+                DockStyle.Fill;
+
+
+
+            rtbChat.Dock =
+                DockStyle.Fill;
+
+
+            rtbChat.ReadOnly=true;
+
+
+            rtbChat.BorderStyle =
+                BorderStyle.None;
+
+
+            rtbChat.BackColor =
+                Color.FromArgb(
+                245,
+                247,
+                250);
+
+
+            rtbChat.Font =
+                new Font(
+                "Segoe UI",
+                11);
+
+
+
+
             pnlCenter.Controls.Add(rtbChat);
-            pnlCenter.Controls.Add(pnlInput);
-            pnlCenter.Controls.Add(pnlFileBar);
-            pnlCenter.Dock = DockStyle.Fill;
-            pnlCenter.Location = new Point(200, 52);
-            pnlCenter.Name = "pnlCenter";
-            pnlCenter.Size = new Size(784, 569);
-            pnlCenter.TabIndex = 0;
-            // 
-            // rtbChat
-            // 
-            rtbChat.BackColor = Color.FromArgb(250, 250, 250);
-            rtbChat.BorderStyle = BorderStyle.None;
-            rtbChat.Dock = DockStyle.Fill;
-            rtbChat.Font = new Font("Consolas", 10.5F);
-            rtbChat.ForeColor = Color.FromArgb(50, 50, 50);
-            rtbChat.Location = new Point(0, 0);
-            rtbChat.Name = "rtbChat";
-            rtbChat.ReadOnly = true;
-            rtbChat.ScrollBars = RichTextBoxScrollBars.Vertical;
-            rtbChat.Size = new Size(784, 469);
-            rtbChat.TabIndex = 0;
-            rtbChat.Text = "";
-            // 
-            // pnlInput
-            // 
-            pnlInput.BackColor = Color.White;
+
+
+
+
+
+
+            // ================= INPUT =================
+
+
+
+            pnlInput.Dock =
+                DockStyle.Bottom;
+
+
+            pnlInput.Height =
+                60;
+
+
+            pnlInput.BackColor =
+                Color.White;
+
+
+
+
+            txtMessage.Location =
+                new Point(15,12);
+
+
+            txtMessage.Size =
+                new Size(
+                650,
+                35);
+
+
+            txtMessage.Font =
+                new Font(
+                "Segoe UI",
+                12);
+
+
+
+            txtMessage.KeyDown +=
+                txtMessage_KeyDown;
+
+
+
+
+
+            btnEmoji.Text =
+                "😊";
+
+
+            btnEmoji.Location =
+                new Point(680,12);
+
+
+            btnEmoji.Size =
+                new Size(
+                45,
+                35);
+
+
+
+
+
+            btnSend.Text =
+                "Gửi ➤";
+
+
+            btnSend.Location =
+                new Point(730,12);
+
+
+            btnSend.Size =
+                new Size(
+                90,
+                35);
+
+
+
+            btnSend.BackColor =
+                Color.FromArgb(
+                0,
+                132,
+                255);
+
+
+            btnSend.ForeColor =
+                Color.White;
+
+
+            btnSend.FlatStyle =
+                FlatStyle.Flat;
+
+
+            btnSend.Click +=
+                btnSend_Click;
+
+
+
+
+
             pnlInput.Controls.Add(txtMessage);
+
+            pnlInput.Controls.Add(btnEmoji);
+
             pnlInput.Controls.Add(btnSend);
-            pnlInput.Dock = DockStyle.Bottom;
-            pnlInput.Location = new Point(0, 469);
-            pnlInput.Name = "pnlInput";
-            pnlInput.Padding = new Padding(8);
-            pnlInput.Size = new Size(784, 56);
-            pnlInput.TabIndex = 1;
-            // 
-            // txtMessage
-            // 
-            txtMessage.BackColor = Color.White;
-            txtMessage.BorderStyle = BorderStyle.FixedSingle;
-            txtMessage.Dock = DockStyle.Fill;
-            txtMessage.Font = new Font("Segoe UI", 11F);
-            txtMessage.ForeColor = Color.FromArgb(50, 50, 50);
-            txtMessage.Location = new Point(8, 8);
-            txtMessage.Name = "txtMessage";
-            txtMessage.Size = new Size(678, 27);
-            txtMessage.TabIndex = 0;
-            txtMessage.KeyDown += txtMessage_KeyDown;
-            // 
-            // btnSend
-            // 
-            btnSend.BackColor = Color.FromArgb(224, 224, 224);
-            btnSend.Cursor = Cursors.Hand;
-            btnSend.Dock = DockStyle.Right;
-            btnSend.FlatAppearance.BorderColor = Color.FromArgb(180, 180, 180);
-            btnSend.FlatStyle = FlatStyle.Flat;
-            btnSend.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-            btnSend.ForeColor = Color.FromArgb(50, 50, 50);
-            btnSend.Location = new Point(686, 8);
-            btnSend.Name = "btnSend";
-            btnSend.Size = new Size(90, 40);
-            btnSend.TabIndex = 1;
-            btnSend.Text = "Gui";
-            btnSend.UseVisualStyleBackColor = false;
-            btnSend.Click += btnSend_Click;
-            // 
-            // pnlFileBar
-            // 
-            pnlFileBar.BackColor = Color.FromArgb(248, 248, 248);
+
+
+
+
+
+
+
+            // ================= FILE =================
+
+
+
+            pnlFileBar.Dock =
+                DockStyle.Bottom;
+
+
+            pnlFileBar.Height =
+                45;
+
+
+
+            btnSendImage.Text =
+                "📷 Ảnh";
+
+
+            btnSendImage.Location =
+                new Point(10,5);
+
+
+            btnSendImage.Click +=
+                btnSendImage_Click;
+
+
+
+
+
+            btnSendVideo.Text =
+                "🎥 Video";
+
+
+            btnSendVideo.Location =
+                new Point(110,5);
+
+
+            btnSendVideo.Click +=
+                btnSendVideo_Click;
+
+
+
+
             pnlFileBar.Controls.Add(btnSendImage);
+
             pnlFileBar.Controls.Add(btnSendVideo);
+
             pnlFileBar.Controls.Add(lblFileName);
-            pnlFileBar.Controls.Add(progressBar);
-            pnlFileBar.Dock = DockStyle.Bottom;
-            pnlFileBar.Location = new Point(0, 525);
-            pnlFileBar.Name = "pnlFileBar";
-            pnlFileBar.Size = new Size(784, 44);
-            pnlFileBar.TabIndex = 2;
-            // 
-            // btnSendImage
-            // 
-            btnSendImage.BackColor = Color.FromArgb(224, 224, 224);
-            btnSendImage.Cursor = Cursors.Hand;
-            btnSendImage.FlatAppearance.BorderColor = Color.FromArgb(180, 180, 180);
-            btnSendImage.FlatStyle = FlatStyle.Flat;
-            btnSendImage.Font = new Font("Segoe UI", 9F);
-            btnSendImage.ForeColor = Color.FromArgb(60, 60, 60);
-            btnSendImage.Location = new Point(8, 4);
-            btnSendImage.Name = "btnSendImage";
-            btnSendImage.Size = new Size(88, 34);
-            btnSendImage.TabIndex = 0;
-            btnSendImage.Text = "Gui Anh";
-            btnSendImage.UseVisualStyleBackColor = false;
-            btnSendImage.Click += btnSendImage_Click;
-            // 
-            // btnSendVideo
-            // 
-            btnSendVideo.BackColor = Color.FromArgb(224, 224, 224);
-            btnSendVideo.Cursor = Cursors.Hand;
-            btnSendVideo.FlatAppearance.BorderColor = Color.FromArgb(180, 180, 180);
-            btnSendVideo.FlatStyle = FlatStyle.Flat;
-            btnSendVideo.Font = new Font("Segoe UI", 9F);
-            btnSendVideo.ForeColor = Color.FromArgb(60, 60, 60);
-            btnSendVideo.Location = new Point(104, 4);
-            btnSendVideo.Name = "btnSendVideo";
-            btnSendVideo.Size = new Size(95, 34);
-            btnSendVideo.TabIndex = 1;
-            btnSendVideo.Text = "Gui Video";
-            btnSendVideo.UseVisualStyleBackColor = false;
-            btnSendVideo.Click += btnSendVideo_Click;
-            // 
-            // lblFileName
-            // 
-            lblFileName.Font = new Font("Segoe UI", 9F, FontStyle.Italic);
-            lblFileName.ForeColor = Color.FromArgb(80, 140, 80);
-            lblFileName.Location = new Point(210, 4);
-            lblFileName.Name = "lblFileName";
-            lblFileName.Size = new Size(300, 34);
-            lblFileName.TabIndex = 2;
-            lblFileName.TextAlign = ContentAlignment.MiddleLeft;
-            // 
-            // progressBar
-            // 
-            progressBar.Location = new Point(520, 14);
-            progressBar.Name = "progressBar";
-            progressBar.Size = new Size(200, 10);
-            progressBar.Style = ProgressBarStyle.Continuous;
-            progressBar.TabIndex = 3;
-            progressBar.Visible = false;
-            // 
-            // FrmChat
-            // 
-            BackColor = Color.FromArgb(245, 245, 245);
-            ClientSize = new Size(984, 621);
+
+
+
+
+
+
+
+            // QUAN TRỌNG:
+            // Dock đúng thứ tự
+
+
+            pnlCenter.Controls.Add(rtbChat);
+
+            pnlCenter.Controls.Add(pnlFileBar);
+
+            pnlCenter.Controls.Add(pnlInput);
+
+
+
+
+
+
+            // FORM
+
+
+            ClientSize =
+                new Size(
+                1200,
+                750);
+
+
+            MinimumSize =
+                new Size(
+                1000,
+                600);
+
+
+
             Controls.Add(pnlCenter);
+
             Controls.Add(pnlLeft);
+
             Controls.Add(pnlTop);
-            Font = new Font("Segoe UI", 9.5F);
-            MinimumSize = new Size(860, 540);
-            Name = "FrmChat";
-            StartPosition = FormStartPosition.CenterScreen;
-            Text = "Chat App";
-            Load += FrmChat_Load;
-            pnlTop.ResumeLayout(false);
-            pnlLeft.ResumeLayout(false);
-            pnlCenter.ResumeLayout(false);
-            pnlInput.ResumeLayout(false);
-            pnlInput.PerformLayout();
-            pnlFileBar.ResumeLayout(false);
+
+
+
+            Text =
+                "Chat Application";
+
+
+
+            Load +=
+                FrmChat_Load;
+
+
+
             ResumeLayout(false);
+
         }
     }
 }
