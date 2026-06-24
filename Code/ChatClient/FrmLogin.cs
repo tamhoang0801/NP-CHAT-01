@@ -18,7 +18,6 @@ namespace ChatApp
             lblStatus.Text = "Chua ket noi";
             lblStatus.ForeColor = Color.FromArgb(150, 150, 150);
         }
-
         private void btnLogin_Click(object sender, EventArgs e)
         {
             string username = txtUsername.Text.Trim();
