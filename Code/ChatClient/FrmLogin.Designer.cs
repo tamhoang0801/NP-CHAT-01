@@ -4,344 +4,161 @@ namespace ChatApp
     {
         private System.ComponentModel.IContainer components = null;
 
-        private System.Windows.Forms.Panel pnlLeft;
-        private System.Windows.Forms.Panel pnlCard;
-        private System.Windows.Forms.Label lblLogo;
-        private System.Windows.Forms.Label lblSub;
-        private System.Windows.Forms.Label lblTitle;
-
-        private System.Windows.Forms.Label lblUser;
-        private System.Windows.Forms.Label lblIP;
-        private System.Windows.Forms.Label lblPort;
-
-        private System.Windows.Forms.TextBox txtUsername;
-        private System.Windows.Forms.TextBox txtIP;
-        private System.Windows.Forms.TextBox txtPort;
-
-        private System.Windows.Forms.Button btnLogin;
-        private System.Windows.Forms.Label lblStatus;
-
+        private System.Windows.Forms.Panel      pnlLeft;
+        private System.Windows.Forms.Panel      pnlRight;
+        private System.Windows.Forms.Label      lblAppTitle;
+        private System.Windows.Forms.Label      lblAppSubtitle;
+        private System.Windows.Forms.Label      lblWelcome;
+        private System.Windows.Forms.Label      lblUsernameHint;
+        private System.Windows.Forms.Label      lblIPHint;
+        private System.Windows.Forms.Label      lblPortHint;
+        private System.Windows.Forms.TextBox    txtUsername;
+        private System.Windows.Forms.TextBox    txtIP;
+        private System.Windows.Forms.TextBox    txtPort;
+        private System.Windows.Forms.Button     btnLogin;
+        private System.Windows.Forms.Label      lblStatus;
 
         protected override void Dispose(bool disposing)
         {
-            if(disposing && components != null)
-                components.Dispose();
-
+            if (disposing && (components != null)) components.Dispose();
             base.Dispose(disposing);
         }
 
-
         private void InitializeComponent()
         {
-            this.pnlLeft = new System.Windows.Forms.Panel();
-            this.lblLogo = new System.Windows.Forms.Label();
-            this.lblSub = new System.Windows.Forms.Label();
-
-            this.pnlCard = new System.Windows.Forms.Panel();
-
-            this.lblTitle = new System.Windows.Forms.Label();
-
-            this.lblUser = new System.Windows.Forms.Label();
-            this.lblIP = new System.Windows.Forms.Label();
-            this.lblPort = new System.Windows.Forms.Label();
-
-            this.txtUsername = new System.Windows.Forms.TextBox();
-            this.txtIP = new System.Windows.Forms.TextBox();
-            this.txtPort = new System.Windows.Forms.TextBox();
-
-            this.btnLogin = new System.Windows.Forms.Button();
-
-            this.lblStatus = new System.Windows.Forms.Label();
-
-
-            // FORM
-            this.Text = "Chat App - Login";
-            this.Size = new System.Drawing.Size(900,550);
-            this.StartPosition =
-            System.Windows.Forms.FormStartPosition.CenterScreen;
-
-            this.BackColor =
-            System.Drawing.Color.FromArgb(240,245,255);
-
-            this.Font =
-            new System.Drawing.Font("Segoe UI",10);
-
-
-            // LEFT PANEL
-
-            this.pnlLeft.Dock =
-            System.Windows.Forms.DockStyle.Left;
-
-            this.pnlLeft.Width = 300;
-
-            this.pnlLeft.BackColor =
-            System.Drawing.Color.FromArgb(70,120,220);
-
-
-
-            this.lblLogo.Text="CHAT";
-
-            this.lblLogo.ForeColor =
-            System.Drawing.Color.White;
-
-            this.lblLogo.Font =
-            new System.Drawing.Font(
-            "Segoe UI",
-            38,
-            System.Drawing.FontStyle.Bold);
-
-
-            this.lblLogo.Location =
-            new System.Drawing.Point(80,150);
-
-
-            this.lblLogo.AutoSize=true;
-
-
-
-            this.lblSub.Text =
-            "TCP CHAT APP\n\nKết nối - Chia sẻ - Trò chuyện";
-
-
-            this.lblSub.ForeColor =
-            System.Drawing.Color.White;
-
-
-            this.lblSub.Font =
-            new System.Drawing.Font(
-            "Segoe UI",
-            12,
-            System.Drawing.FontStyle.Bold);
-
-
-
-            this.lblSub.Location =
-            new System.Drawing.Point(45,230);
-
-
-
-            this.lblSub.AutoSize=true;
-
-
-
-            this.pnlLeft.Controls.Add(lblLogo);
-            this.pnlLeft.Controls.Add(lblSub);
-
-
-
-
-            // CARD LOGIN
-
-            this.pnlCard.Location =
-            new System.Drawing.Point(360,50);
-
-            this.pnlCard.Size =
-            new System.Drawing.Size(450,430);
-
-
-            this.pnlCard.BackColor =
-            System.Drawing.Color.White;
-
-
-
-
-            // TITLE
-
-            this.lblTitle.Text =
-            "ĐĂNG NHẬP";
-
-
-            this.lblTitle.Font =
-            new System.Drawing.Font(
-            "Segoe UI",
-            24,
-            System.Drawing.FontStyle.Bold);
-
-
-            this.lblTitle.ForeColor =
-            System.Drawing.Color.FromArgb(40,80,160);
-
-
-            this.lblTitle.Location =
-            new System.Drawing.Point(120,40);
-
-
-            this.lblTitle.AutoSize=true;
-
-
-
-
-            // LABEL
-
-            lblUser.Text="Tên người dùng";
-            lblIP.Text="IP SERVER";
-            lblPort.Text="PORT";
-
-
-            lblUser.Location =
-            new System.Drawing.Point(40,120);
-
-            lblIP.Location =
-            new System.Drawing.Point(40,200);
-
-            lblPort.Location =
-            new System.Drawing.Point(270,200);
-
-
-
-            foreach(var l in new[]{lblUser,lblIP,lblPort})
-            {
-                l.ForeColor =
-                System.Drawing.Color.Gray;
-
-                l.Font =
-                new System.Drawing.Font(
-                "Segoe UI",
-                9,
-                System.Drawing.FontStyle.Bold);
-
-                l.AutoSize=true;
-            }
-
-
-
-            // TEXTBOX
-
-            txtUsername.Location =
-            new System.Drawing.Point(40,145);
-
-            txtUsername.Size =
-            new System.Drawing.Size(360,35);
-
-
-
-            txtIP.Location =
-            new System.Drawing.Point(40,225);
-
-
-            txtIP.Size =
-            new System.Drawing.Size(210,35);
-
-
-
-            txtPort.Location =
-            new System.Drawing.Point(270,225);
-
-
-            txtPort.Size =
-            new System.Drawing.Size(130,35);
-
-
-
-            foreach(var t in new[]{txtUsername,txtIP,txtPort})
-            {
-                t.Font =
-                new System.Drawing.Font(
-                "Segoe UI",
-                11);
-
-                t.BorderStyle =
-                System.Windows.Forms.BorderStyle.FixedSingle;
-            }
-
-
-
-
-
-            // BUTTON
-
-            btnLogin.Text =
-            "ĐĂNG NHẬP";
-
-
-            btnLogin.Location =
-            new System.Drawing.Point(40,300);
-
-
-            btnLogin.Size =
-            new System.Drawing.Size(360,50);
-
-
-
-            btnLogin.BackColor =
-            System.Drawing.Color.FromArgb(70,120,220);
-
-
-            btnLogin.ForeColor =
-            System.Drawing.Color.White;
-
-
-
-            btnLogin.FlatStyle =
-            System.Windows.Forms.FlatStyle.Flat;
-
-
-            btnLogin.Font =
-            new System.Drawing.Font(
-            "Segoe UI",
-            12,
-            System.Drawing.FontStyle.Bold);
-
-
-
-            btnLogin.Cursor =
-            System.Windows.Forms.Cursors.Hand;
-
-
-            btnLogin.Click +=
-            new System.EventHandler(
-            this.btnLogin_Click);
-
-
-
-
-
-            // STATUS
-
-
-            lblStatus.Text =
-            "Chưa kết nối";
-
-
-            lblStatus.Location =
-            new System.Drawing.Point(40,370);
-
-
-            lblStatus.AutoSize=true;
-
-
-            lblStatus.ForeColor =
-            System.Drawing.Color.Gray;
-
-
-
-
-            pnlCard.Controls.Add(lblTitle);
-
-            pnlCard.Controls.Add(lblUser);
-            pnlCard.Controls.Add(lblIP);
-            pnlCard.Controls.Add(lblPort);
-
-
-            pnlCard.Controls.Add(txtUsername);
-            pnlCard.Controls.Add(txtIP);
-            pnlCard.Controls.Add(txtPort);
-
-
-            pnlCard.Controls.Add(btnLogin);
-            pnlCard.Controls.Add(lblStatus);
-
-
-
-
-            this.Controls.Add(pnlLeft);
-            this.Controls.Add(pnlCard);
-
-
-
-            this.Load +=
-            new System.EventHandler(
-            this.FrmLogin_Load);
+            this.pnlLeft         = new System.Windows.Forms.Panel();
+            this.pnlRight        = new System.Windows.Forms.Panel();
+            this.lblAppTitle     = new System.Windows.Forms.Label();
+            this.lblAppSubtitle  = new System.Windows.Forms.Label();
+            this.lblWelcome      = new System.Windows.Forms.Label();
+            this.lblUsernameHint = new System.Windows.Forms.Label();
+            this.lblIPHint       = new System.Windows.Forms.Label();
+            this.lblPortHint     = new System.Windows.Forms.Label();
+            this.txtUsername     = new System.Windows.Forms.TextBox();
+            this.txtIP           = new System.Windows.Forms.TextBox();
+            this.txtPort         = new System.Windows.Forms.TextBox();
+            this.btnLogin        = new System.Windows.Forms.Button();
+            this.lblStatus       = new System.Windows.Forms.Label();
+
+            this.Text            = "Chat App - Dang Nhap";
+            this.Size            = new System.Drawing.Size(620, 420);
+            this.StartPosition   = System.Windows.Forms.FormStartPosition.CenterScreen;
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
+            this.MaximizeBox     = false;
+            this.BackColor       = System.Drawing.Color.FromArgb(245, 245, 245);
+            this.Font            = new System.Drawing.Font("Segoe UI", 9.5f);
+            this.Load           += new System.EventHandler(this.FrmLogin_Load);
+
+            this.pnlLeft.Size      = new System.Drawing.Size(230, 420);
+            this.pnlLeft.Location  = new System.Drawing.Point(0, 0);
+            this.pnlLeft.BackColor = System.Drawing.Color.FromArgb(230, 235, 245);
+
+            this.lblAppTitle.Text      = "Chat";
+            this.lblAppTitle.Font      = new System.Drawing.Font("Segoe UI", 26f, System.Drawing.FontStyle.Bold);
+            this.lblAppTitle.ForeColor = System.Drawing.Color.FromArgb(80, 100, 150);
+            this.lblAppTitle.Size      = new System.Drawing.Size(210, 70);
+            this.lblAppTitle.Location  = new System.Drawing.Point(10, 120);
+            this.lblAppTitle.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+
+            this.lblAppSubtitle.Text      = "TCP Chat App\nKet Noi - Chia Se - Trao Doi";
+            this.lblAppSubtitle.Font      = new System.Drawing.Font("Segoe UI", 11f, System.Drawing.FontStyle.Bold);
+            this.lblAppSubtitle.ForeColor = System.Drawing.Color.FromArgb(70, 90, 130);
+            this.lblAppSubtitle.Size      = new System.Drawing.Size(210, 70);
+            this.lblAppSubtitle.Location  = new System.Drawing.Point(10, 200);
+            this.lblAppSubtitle.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+
+            this.pnlLeft.Controls.Add(this.lblAppTitle);
+            this.pnlLeft.Controls.Add(this.lblAppSubtitle);
+
+            this.pnlRight.Size      = new System.Drawing.Size(390, 420);
+            this.pnlRight.Location  = new System.Drawing.Point(230, 0);
+            this.pnlRight.BackColor = System.Drawing.Color.White;
+
+            this.lblWelcome.Text      = "Dang Nhap";
+            this.lblWelcome.Font      = new System.Drawing.Font("Segoe UI", 20f, System.Drawing.FontStyle.Bold);
+            this.lblWelcome.ForeColor = System.Drawing.Color.FromArgb(50, 50, 50);
+            this.lblWelcome.Size      = new System.Drawing.Size(330, 45);
+            this.lblWelcome.Location  = new System.Drawing.Point(30, 40);
+
+            this.lblUsernameHint.Text      = "TEN NGUOI DUNG";
+            this.lblUsernameHint.Font      = new System.Drawing.Font("Segoe UI", 7.5f, System.Drawing.FontStyle.Bold);
+            this.lblUsernameHint.ForeColor = System.Drawing.Color.FromArgb(120, 120, 120);
+            this.lblUsernameHint.Size      = new System.Drawing.Size(330, 18);
+            this.lblUsernameHint.Location  = new System.Drawing.Point(30, 108);
+
+            this.txtUsername.Size      = new System.Drawing.Size(330, 28);
+            this.txtUsername.Location  = new System.Drawing.Point(30, 128);
+            StyleTxt(this.txtUsername);
+            this.txtUsername.KeyDown  += new System.Windows.Forms.KeyEventHandler(this.txtInput_KeyDown);
+            this.txtUsername.Enter    += new System.EventHandler(this.TextBox_Enter);
+            this.txtUsername.Leave    += new System.EventHandler(this.TextBox_Leave);
+
+            this.lblIPHint.Text      = "DIA CHI IP SERVER";
+            this.lblIPHint.Font      = new System.Drawing.Font("Segoe UI", 7.5f, System.Drawing.FontStyle.Bold);
+            this.lblIPHint.ForeColor = System.Drawing.Color.FromArgb(120, 120, 120);
+            this.lblIPHint.Size      = new System.Drawing.Size(180, 18);
+            this.lblIPHint.Location  = new System.Drawing.Point(30, 174);
+
+            this.txtIP.Size      = new System.Drawing.Size(185, 28);
+            this.txtIP.Location  = new System.Drawing.Point(30, 194);
+            StyleTxt(this.txtIP);
+            this.txtIP.KeyDown  += new System.Windows.Forms.KeyEventHandler(this.txtInput_KeyDown);
+            this.txtIP.Enter    += new System.EventHandler(this.TextBox_Enter);
+            this.txtIP.Leave    += new System.EventHandler(this.TextBox_Leave);
+
+            this.lblPortHint.Text      = "PORT";
+            this.lblPortHint.Font      = new System.Drawing.Font("Segoe UI", 7.5f, System.Drawing.FontStyle.Bold);
+            this.lblPortHint.ForeColor = System.Drawing.Color.FromArgb(120, 120, 120);
+            this.lblPortHint.Size      = new System.Drawing.Size(120, 18);
+            this.lblPortHint.Location  = new System.Drawing.Point(228, 174);
+
+            this.txtPort.Size      = new System.Drawing.Size(132, 28);
+            this.txtPort.Location  = new System.Drawing.Point(228, 194);
+            StyleTxt(this.txtPort);
+            this.txtPort.KeyDown  += new System.Windows.Forms.KeyEventHandler(this.txtInput_KeyDown);
+            this.txtPort.Enter    += new System.EventHandler(this.TextBox_Enter);
+            this.txtPort.Leave    += new System.EventHandler(this.TextBox_Leave);
+
+            this.btnLogin.Text      = "DANG NHAP";
+            this.btnLogin.Size      = new System.Drawing.Size(330, 40);
+            this.btnLogin.Location  = new System.Drawing.Point(30, 248);
+            this.btnLogin.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnLogin.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(180, 180, 180);
+            this.btnLogin.FlatAppearance.BorderSize  = 1;
+            this.btnLogin.BackColor = System.Drawing.Color.FromArgb(224, 224, 224);
+            this.btnLogin.ForeColor = System.Drawing.Color.FromArgb(50, 50, 50);
+            this.btnLogin.Font      = new System.Drawing.Font("Segoe UI", 10f, System.Drawing.FontStyle.Bold);
+            this.btnLogin.Cursor    = System.Windows.Forms.Cursors.Hand;
+            this.btnLogin.Click    += new System.EventHandler(this.btnLogin_Click);
+            this.btnLogin.MouseEnter += (s, e) => this.btnLogin.BackColor = System.Drawing.Color.FromArgb(210, 210, 210);
+            this.btnLogin.MouseLeave += (s, e) => this.btnLogin.BackColor = System.Drawing.Color.FromArgb(224, 224, 224);
+
+            this.lblStatus.Size      = new System.Drawing.Size(330, 24);
+            this.lblStatus.Location  = new System.Drawing.Point(30, 302);
+            this.lblStatus.ForeColor = System.Drawing.Color.FromArgb(130, 130, 130);
+            this.lblStatus.Font      = new System.Drawing.Font("Segoe UI", 9.5f);
+            this.lblStatus.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+
+            this.pnlRight.Controls.Add(this.lblWelcome);
+            this.pnlRight.Controls.Add(this.lblUsernameHint);
+            this.pnlRight.Controls.Add(this.txtUsername);
+            this.pnlRight.Controls.Add(this.lblIPHint);
+            this.pnlRight.Controls.Add(this.txtIP);
+            this.pnlRight.Controls.Add(this.lblPortHint);
+            this.pnlRight.Controls.Add(this.txtPort);
+            this.pnlRight.Controls.Add(this.btnLogin);
+            this.pnlRight.Controls.Add(this.lblStatus);
+
+            this.Controls.Add(this.pnlLeft);
+            this.Controls.Add(this.pnlRight);
+        }
+
+        private static void StyleTxt(System.Windows.Forms.TextBox tb)
+        {
+            tb.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            tb.BackColor   = System.Drawing.Color.White;
+            tb.ForeColor   = System.Drawing.Color.FromArgb(50, 50, 50);
+            tb.Font        = new System.Drawing.Font("Segoe UI", 10.5f);
         }
     }
 }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Net.Sockets;
@@ -8,30 +9,71 @@ using System.Windows.Forms;
 
 namespace ChatApp
 {
-    public partial class FrmChat : Form
+    public partial class    FrmChat : Form
     {
         private readonly string _username;
         private TcpClient _client;
         private NetworkStream _stream;
         private Thread _receiveThread;
-        private string _avatarFolder;
-        private System.Collections.Generic.Dictionary<string, Image> _avatarCache;
+        private readonly Dictionary<string, Image> _avatarCache = new Dictionary<string, Image>();
+        private Image _myAvatarImage;
 
         public FrmChat(string username, TcpClient client)
         {
             _username = username;
             _client = client;
             _stream = _client.GetStream();
-            _avatarCache = new System.Collections.Generic.Dictionary<string, Image>();
-            _avatarFolder = Path.Combine(Application.StartupPath, "Avatars");
-
-            // Create avatar folder if it doesn't exist
-            if (!Directory.Exists(_avatarFolder))
-            {
-                Directory.CreateDirectory(_avatarFolder);
-            }
-
             InitializeComponent();
+
+            this.pnlTop.Paint += (s, e) =>
+            {
+                e.Graphics.DrawLine(
+                    new System.Drawing.Pen(System.Drawing.Color.FromArgb(204, 204, 204), 1),
+                    0, this.pnlTop.Height - 1, this.pnlTop.Width, this.pnlTop.Height - 1);
+            };
+
+            this.btnLogout.MouseEnter += (s, e) => this.btnLogout.BackColor = System.Drawing.Color.FromArgb(210, 210, 210);
+            this.btnLogout.MouseLeave += (s, e) => this.btnLogout.BackColor = System.Drawing.Color.FromArgb(224, 224, 224);
+
+            this.pnlLeft.Paint += (s, e) =>
+            {
+                e.Graphics.DrawLine(
+                    new System.Drawing.Pen(System.Drawing.Color.FromArgb(204, 204, 204), 1),
+                    this.pnlLeft.Width - 1, 0, this.pnlLeft.Width - 1, this.pnlLeft.Height);
+            };
+
+            this.pnlFileBar.Paint += (s, e) =>
+            {
+                e.Graphics.DrawLine(
+                    new System.Drawing.Pen(System.Drawing.Color.FromArgb(204, 204, 204), 1),
+                    0, 0, this.pnlFileBar.Width, 0);
+            };
+
+            this.btnSendImage.MouseEnter += (s, e) => this.btnSendImage.BackColor = System.Drawing.Color.FromArgb(210, 210, 210);
+            this.btnSendImage.MouseLeave += (s, e) => this.btnSendImage.BackColor = System.Drawing.Color.FromArgb(224, 224, 224);
+
+            this.btnSendVideo.MouseEnter += (s, e) => this.btnSendVideo.BackColor = System.Drawing.Color.FromArgb(210, 210, 210);
+            this.btnSendVideo.MouseLeave += (s, e) => this.btnSendVideo.BackColor = System.Drawing.Color.FromArgb(224, 224, 224);
+
+            this.pnlInput.Paint += (s, e) =>
+            {
+                e.Graphics.DrawLine(
+                    new System.Drawing.Pen(System.Drawing.Color.FromArgb(204, 204, 204), 1),
+                    0, 0, this.pnlInput.Width, 0);
+            };
+
+            this.btnSend.MouseEnter += (s, e) => this.btnSend.BackColor = System.Drawing.Color.FromArgb(210, 210, 210);
+            this.btnSend.MouseLeave += (s, e) => this.btnSend.BackColor = System.Drawing.Color.FromArgb(224, 224, 224);
+
+            this.FormClosed += (sender, e) => Environment.Exit(0);
+
+            lstOnlineUsers.DrawMode = DrawMode.OwnerDrawFixed;
+            lstOnlineUsers.ItemHeight = 36;
+            lstOnlineUsers.DrawItem += LstOnlineUsers_DrawItem;
+
+            this.btnChooseAvatar.MouseEnter += (s, e) => this.btnChooseAvatar.BackColor = System.Drawing.Color.FromArgb(210, 210, 210);
+            this.btnChooseAvatar.MouseLeave += (s, e) => this.btnChooseAvatar.BackColor = System.Drawing.Color.FromArgb(224, 224, 224);
+
         }
 
         private void FrmChat_Load(object sender, EventArgs e)
@@ -41,33 +83,7 @@ namespace ChatApp
 
             AppendSystemMessage("Chào mừng " + _username + " đã kết nối vào phòng!");
 
-            // Gửi avatar lên server nếu có
-            if (!string.IsNullOrEmpty(FrmLogin.SelectedAvatarPath) && File.Exists(FrmLogin.SelectedAvatarPath))
-            {
-                try
-                {
-                    SendAvatarToServer(FrmLogin.SelectedAvatarPath);
-
-                    // Lưu avatar vào máy
-                    try
-                    {
-                        string localAvatarPath = Path.Combine(_avatarFolder, $"{_username}.jpg");
-                        File.Copy(FrmLogin.SelectedAvatarPath, localAvatarPath, true);
-                    }
-                    catch (Exception ex)
-                    {
-                        AppendSystemMessage($"[Cảnh báo] Không thể lưu avatar cục bộ: {ex.Message}");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    AppendSystemMessage($"[Lỗi] Không thể gửi avatar: {ex.Message}");
-                }
-            }
-            else if (!string.IsNullOrEmpty(FrmLogin.SelectedAvatarPath))
-            {
-                AppendSystemMessage("[Cảnh báo] File avatar không tìm thấy!");
-            }
+            InitializeMyDefaultAvatar();
 
             // Bật luồng lắng nghe liên tục
             _receiveThread = new Thread(ReceiveMessage);
@@ -75,37 +91,43 @@ namespace ChatApp
             _receiveThread.Start();
         }
 
-        // =========================================================
-        // PHẦN 1: NHẬN DỮ LIỆU (Chữ của TV2 & File của TV4)
-        // =========================================================
+
         private void ReceiveMessage()
         {
-            Socket socket = _client.Client; // Lấy lõi Socket để dùng tính năng Peek
+            Socket socket = _client.Client;
             while (_stream != null)
             {
                 try
                 {
-                    // Thuật toán của TV4: Nhìn lén 1 byte đầu tiên xem có phải là File không
+
                     byte[] peekBuffer = new byte[1];
                     int peekBytes = socket.Receive(peekBuffer, 1, SocketFlags.Peek);
-                    if (peekBytes == 0) break; // Mất kết nối
+                    if (peekBytes == 0)
+                    {
+                        HandleDisconnect("Server ngừng hoạt động.");
+                        break;
+                    }
 
                     byte firstByte = peekBuffer[0];
 
-                    // NẾU LÀ FILE (0x10: Ảnh, 0x11: Video) -> Luồng của TV4
+                    // NẾU LÀ FILE (0x10: Ảnh, 0x11: Video)
                     if (firstByte == 0x10 || firstByte == 0x11)
                     {
-                        // 1. Rút 9 byte phần đầu (1 byte loại file + 8 byte kích thước)
+                        // Rút 9 byte phần đầu (1 byte loại file + 8 byte kích thước)
                         byte[] header = new byte[9];
                         int headerRead = socket.Receive(header, 9, SocketFlags.None);
-                        if (headerRead == 0) break;
+                        if (headerRead == 0)
+                        {
+                            HandleDisconnect("Mất kết nối khi đang nhận file.");
+                            break;
+                        }
 
-                        // 2. Tính toán dung lượng file
+                        // Tính toán dung lượng file
                         long dataSize = BitConverter.ToInt64(header, 1);
                         byte[] payload = new byte[dataSize];
                         int totalReceived = 0;
 
-                        // 3. Tải từ từ cho đến khi đủ dung lượng
+                        // Tải từ từ cho đến khi đủ dung lượng
                         while (totalReceived < dataSize)
                         {
                             int read = socket.Receive(payload, totalReceived, (int)(dataSize - totalReceived), SocketFlags.None);
@@ -113,102 +135,195 @@ namespace ChatApp
                             totalReceived += read;
                         }
 
-                        // 4. Lưu file vào máy
+                        // Lưu file vào máy
                         string type = firstByte == 0x10 ? "Ảnh" : "Video";
                         string ext = firstByte == 0x10 ? ".jpg" : ".mp4";
                         string fileName = $"Nhan_{type}_{DateTime.Now:yyyyMMdd_HHmmss}{ext}";
                         string savePath = Path.Combine(Application.StartupPath, fileName);
                         File.WriteAllBytes(savePath, payload);
 
-                        // Gọi giao diện TV3 thông báo
                         AppendSystemMessage($"[Hệ thống] Bạn nhận được 1 {type}. Đã lưu tại: {savePath}");
                     }
-                    // NẾU LÀ AVATAR (0x12) -> Nhận avatar từ người khác
-                    else if (firstByte == 0x12)
-                    {
-                        byte[] header = new byte[9];
-                        int headerRead = socket.Receive(header, 9, SocketFlags.None);
-                        if (headerRead == 0) break;
 
-                        long dataSize = BitConverter.ToInt64(header, 1);
-                        byte[] payload = new byte[dataSize];
-                        int totalReceived = 0;
-
-                        while (totalReceived < dataSize)
-                        {
-                            int read = socket.Receive(payload, totalReceived, (int)(dataSize - totalReceived), SocketFlags.None);
-                            if (read == 0) break;
-                            totalReceived += read;
-                        }
-
-                        // Avatar sẽ được nhận sau khi có thông báo USER_ONLINE ở dạng text
-                    }
                     // NẾU LÀ CHỮ (TEXT)
                     else
                     {
                         byte[] buffer = new byte[2048];
                         int bytesRead = socket.Receive(buffer, 0, buffer.Length, SocketFlags.None);
-                        if (bytesRead == 0) break;
+                        if (bytesRead == 0)
+                        {
+                            HandleDisconnect("Mất kết nối với Server.");
+                            break;
+                        }
 
                         string rawData = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-                        string[] tokens = rawData.Split('|');
-                        string command = tokens[0];
+                        List<string> messages = SplitStickyPackets(rawData);
 
-                        if (command == "BROADCAST" && tokens.Length > 1)
+                        foreach (string msg in messages)
                         {
-                            string messageContent = tokens[1];
-                            string time = DateTime.Now.ToString("HH:mm");
-
-                            // Parse sender name from message (format: "SenderName: Message")
-                            string senderName = "Người khác";
-                            if (messageContent.Contains(": "))
-                            {
-                                int colonIndex = messageContent.IndexOf(": ");
-                                senderName = messageContent.Substring(0, colonIndex);
-                                messageContent = messageContent.Substring(colonIndex + 2);
-                            }
-
-                            if (senderName.StartsWith("[Hệ thống]")) 
-                                AppendSystemMessage(messageContent);
-                            else 
-                                AppendOtherMessage(senderName, messageContent, time);
-                        }
-                        else if (command == "UPDATE_ONLINE" && tokens.Length > 1)
-                        {
-                            string[] users = tokens[1].Split(',');
-                            UpdateOnlineUsers(users);
-                        }
-                        else if (command == "USER_ONLINE" && tokens.Length > 1)
-                        {
-                            string username = tokens[1];
-                            AppendSystemMessage($"[Trực tuyến] {username} vừa đăng nhập!");
-
-                            // Chờ avatar tới (nó sẽ ở dạng dữ liệu nhị phân với header 0x12)
-                            System.Threading.Thread.Sleep(100);
-                        }
-                        else if (command == "USER_OFFLINE" && tokens.Length > 1)
-                        {
-                            string username = tokens[1];
-                            AppendSystemMessage($"[Ngoại tuyến] {username} vừa thoát!");
+                            ProcessSingleMessage(socket, msg);
                         }
                     }
                 }
-                catch { break; }
+                catch
+                {
+                    if (this.IsDisposed || !this.IsHandleCreated) return;
+
+                    try
+                    {
+                        this.Invoke(new Action(() =>
+                        {
+                            if (this.IsDisposed) return;
+
+                            MessageBox.Show("Đường truyền bị đứt!.", "Lỗi mạng", MessageBoxButtons.OK, MessageBoxIcon.Error);
+
+                            System.Diagnostics.Process.Start(Application.ExecutablePath);
+                            Environment.Exit(0);
+                        }));
+                    }
+                    catch { }
+
+                    return;
+                }
             }
         }
 
-        // =========================================================
-        // PHẦN 2: GỬI DỮ LIỆU (Chữ của TV2 & File của TV4)
-        // =========================================================
+        private List<string> SplitStickyPackets(string rawData)
+        {
+            List<string> messages = new List<string>();
+            string[] prefixes = { "UPDATE_ONLINE|", "BROADCAST|", "AVATAR_UPDATE|", "ERROR|" };
+            
+            int currentIndex = 0;
+            while (currentIndex < rawData.Length)
+            {
+                int nextPrefixIndex = -1;
+                
+                foreach (string prefix in prefixes)
+                {
+                    int index = rawData.IndexOf(prefix, currentIndex + 1);
+                    if (index > 0 && (nextPrefixIndex == -1 || index < nextPrefixIndex))
+                    {
+                        nextPrefixIndex = index;
+                    }
+                }
+                
+                if (nextPrefixIndex != -1)
+                {
+                    string msg = rawData.Substring(currentIndex, nextPrefixIndex - currentIndex);
+                    messages.Add(msg);
+                    currentIndex = nextPrefixIndex;
+                }
+                else
+                {
+                    string msg = rawData.Substring(currentIndex);
+                    messages.Add(msg);
+                    break;
+                }
+            }
+            
+            return messages;
+        }
 
-        // Gửi chữ (TV2)
+        private void ProcessSingleMessage(Socket socket, string msg)
+        {
+            if (msg.StartsWith(AvatarHelper.AvatarUpdateCommand + "|"))
+            {
+                string fullAvatarMessage = AvatarHelper.ReadCompleteAvatarMessage(socket, msg);
+                if (AvatarHelper.TryParseAvatarMessage(fullAvatarMessage, out string avatarUser, out string avatarBase64))
+                    ApplyAvatarUpdate(avatarUser, avatarBase64);
+                return;
+            }
+
+            string[] tokens = msg.Split('|');
+            if (tokens.Length == 0) return;
+            string command = tokens[0];
+
+            if (command == "BROADCAST" && tokens.Length > 1)
+            {
+                string messageContent = tokens[1];
+                string time = DateTime.Now.ToString("HH:mm");
+
+                // Nếu là tin nhắn của hệ thống
+                if (messageContent.StartsWith("[Hệ thống]"))
+                {
+                    AppendSystemMessage(messageContent);
+                    if (messageContent.Contains("đóng cửa"))
+                    {
+                        this.Invoke(new Action(() =>
+                        {
+                            System.Diagnostics.Process.Start(Application.ExecutablePath);
+                            Environment.Exit(0);
+                        }));
+                        return;
+                    }
+                }
+                else
+                {
+                    if (messageContent.Contains("đóng cửa"))
+                    {
+                        this.Invoke(new Action(() =>
+                        {
+                            MessageBox.Show("Server đã đóng cửa!.", "Mất kết nối", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+
+                            Application.Restart();
+                            Environment.Exit(0); // Ép hệ thống dọn dẹp sạch tiến trình cũ
+                        }));
+                        return; // Cắt đứt luồng ngầm
+                    }
+
+                    int colonIndex = messageContent.IndexOf(':');
+
+                    if (colonIndex > 0)
+                    {
+                        if (messageContent.Contains(": "))
+                        {
+                            string senderName = messageContent.Substring(0, colonIndex).Trim();
+                            string actualContent = messageContent.Substring(colonIndex + 1).Trim();
+                                         
+                            // In ra màn hình
+                            AppendOtherMessage(senderName, actualContent, time);
+                        }
+                    }
+                }
+            }
+            else if (command == "UPDATE_ONLINE" && tokens.Length > 1)
+            {
+                string[] users = tokens[1].Split(',');
+                UpdateOnlineUsers(users);
+            }
+            else if (command == "ERROR" && tokens.Length > 1)
+            {
+                this.Invoke(new Action(() =>
+                {
+                    MessageBox.Show(tokens[1], "Lỗi đăng nhập", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    System.Diagnostics.Process.Start(Application.ExecutablePath);
+                    Environment.Exit(0);
+                }));
+            }
+        }
+
+
+        private void HandleDisconnect(string reason)
+        {
+            if (this.IsDisposed || !this.IsHandleCreated) return; // Nếu form đã đóng từ trước thì thôi bỏ qua
+
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new MethodInvoker(delegate { HandleDisconnect(reason); }));
+                return;
+            }
+
+            MessageBox.Show(reason, "Lỗi kết nối", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            this.Close();
+        }
+
         private void SendTextMessage()
         {
             string content = txtMessage.Text.Trim();
             if (content == "") return;
 
             string time = DateTime.Now.ToString("HH:mm");
-            AppendMyMessage(_username, content, time); // Giao diện TV3
+            AppendMyMessage(_username, content, time);
 
             try
             {
@@ -233,7 +348,7 @@ namespace ChatApp
             }
         }
 
-        // Thuật toán Gửi File (TV4)
+
         private void SendFile(byte typeCode, string filter)
         {
             using (OpenFileDialog ofd = new OpenFileDialog() { Filter = filter })
@@ -245,7 +360,7 @@ namespace ChatApp
                         // Đọc file thành Byte
                         byte[] fileData = File.ReadAllBytes(ofd.FileName);
 
-                        // Đóng gói: 1 byte mã loại + 8 byte kích thước
+                        // 1 byte mã loại + 8 byte kích thước
                         byte[] header = new byte[9];
                         header[0] = typeCode;
                         byte[] sizeBytes = BitConverter.GetBytes((long)fileData.Length);
@@ -267,7 +382,6 @@ namespace ChatApp
             }
         }
 
-        // 2 Nút bấm gọi thuật toán gửi file
         private void btnSendImage_Click(object sender, EventArgs e)
         {
             SendFile(0x10, "Image Files|*.jpg;*.jpeg;*.png;*.gif;*.bmp");
@@ -290,9 +404,6 @@ namespace ChatApp
             Environment.Exit(0);
         }
 
-        // =========================================================
-        // PHẦN 3: GIAO DIỆN (Hàm hiển thị của TV3 - Giữ nguyên)
-        // =========================================================
 
         public void UpdateOnlineUsers(string[] onlineList)
         {
@@ -359,31 +470,111 @@ namespace ChatApp
             rtbChat.SelectionColor = rtbChat.ForeColor;
         }
 
-        private void SendAvatarToServer(string avatarPath)
+        private void InitializeMyDefaultAvatar()
         {
+            ApplyAvatarUpdate(_username, null);
+        }
+
+        private void btnChooseAvatar_Click(object sender, EventArgs e)
+        {
+            using OpenFileDialog ofd = new OpenFileDialog
+            {
+                Filter = "JPEG Files|*.jpg",
+                Title = "Chon avatar (.jpg)"
+            };
+
+            if (ofd.ShowDialog() != DialogResult.OK)
+                return;
+
+            if (!AvatarHelper.TryValidateAvatarFile(ofd.FileName, out string validationError))
+            {
+                MessageBox.Show(validationError, "Loi avatar", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
             try
             {
-                if (!File.Exists(avatarPath))
-                    return;
-
-                byte[] avatarData = File.ReadAllBytes(avatarPath);
-
-                // Gửi avatar với header 0x12
-                byte[] header = new byte[9];
-                header[0] = 0x12; // Mã avatar
-                byte[] sizeBytes = BitConverter.GetBytes((long)avatarData.Length);
-                Array.Copy(sizeBytes, 0, header, 1, 8);
-
-                Socket socket = _client.Client;
-                socket.Send(header);
-                socket.Send(avatarData);
-
-                AppendSystemMessage("[Hệ thống] Đã gửi avatar lên server.");
+                string base64 = AvatarHelper.ImageFileToBase64(ofd.FileName);
+                string msg = AvatarHelper.BuildAvatarUploadMessage(_username, base64);
+                byte[] data = Encoding.UTF8.GetBytes(msg);
+                _stream.Write(data, 0, data.Length);
             }
             catch (Exception ex)
             {
-                AppendSystemMessage($"[Lỗi] Không thể gửi avatar: {ex.Message}");
+                MessageBox.Show("Loi khi chon avatar: " + ex.Message);
             }
+        }
+
+        private void ApplyAvatarUpdate(string username, string base64)
+        {
+            if (InvokeRequired)
+            {
+                Invoke(new Action(() => ApplyAvatarUpdate(username, base64)));
+                return;
+            }
+
+            try
+            {
+                Image avatarImage = string.IsNullOrEmpty(base64)
+                    ? AvatarHelper.GetDefaultAvatar(username, 64)
+                    : AvatarHelper.Base64ToImage(base64);
+
+                SetUserAvatarCache(username, avatarImage);
+
+                if (username == _username)
+                {
+                    _myAvatarImage?.Dispose();
+                    _myAvatarImage = avatarImage;
+                    Image oldHeaderAvatar = picAvatar.Image;
+                    picAvatar.Image = AvatarHelper.ToThumbnail(_myAvatarImage, picAvatar.Width - 12);
+                    oldHeaderAvatar?.Dispose();
+                }
+
+                lstOnlineUsers.Invalidate();
+            }
+            catch { }
+        }
+
+        private void SetUserAvatarCache(string username, Image avatarImage)
+        {
+            if (_avatarCache.TryGetValue(username, out Image oldImage))
+            {
+                if (!ReferenceEquals(oldImage, _myAvatarImage))
+                    oldImage.Dispose();
+            }
+
+            _avatarCache[username] = avatarImage;
+        }
+
+        private Image GetAvatarForUser(string username)
+        {
+            if (_avatarCache.TryGetValue(username, out Image cached))
+                return cached;
+
+            Image defaultAvatar = AvatarHelper.GetDefaultAvatar(username, 28);
+            _avatarCache[username] = defaultAvatar;
+            return defaultAvatar;
+        }
+
+        private void LstOnlineUsers_DrawItem(object sender, DrawItemEventArgs e)
+        {
+            if (e.Index < 0)
+                return;
+
+            e.DrawBackground();
+
+            string itemText = lstOnlineUsers.Items[e.Index]?.ToString() ?? "";
+            string username = itemText.StartsWith("Online - ")
+                ? itemText.Substring("Online - ".Length)
+                : itemText;
+
+            Image avatar = GetAvatarForUser(username);
+            e.Graphics.DrawImage(avatar, e.Bounds.Left + 6, e.Bounds.Top + 4, 28, 28);
+
+            using SolidBrush brush = new SolidBrush(e.ForeColor);
+            e.Graphics.DrawString(itemText, e.Font, brush, e.Bounds.Left + 40, e.Bounds.Top + 8);
+
+            e.DrawFocusRectangle();
         }
     }
 }
