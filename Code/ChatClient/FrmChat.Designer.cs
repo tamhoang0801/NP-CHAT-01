@@ -2,7 +2,9 @@ namespace ChatApp
 {
     partial class FrmChat
     {
+
         private System.ComponentModel.IContainer components = null;
+
 
         private Panel pnlTop;
         private Panel pnlLeft;
@@ -10,27 +12,39 @@ namespace ChatApp
         private Panel pnlInput;
         private Panel pnlFileBar;
 
+
         private Label lblCurrentUser;
         private Label lblStatus;
+
         private Button btnLogout;
+
 
         private Label lblOnlineTitle;
         private Label lblOnlineCount;
 
+
         private ListBox lstOnlineUsers;
+
 
         private RichTextBox rtbChat;
 
+
         private TextBox txtMessage;
+
 
         private Button btnSend;
         private Button btnEmoji;
 
+
         private Button btnSendImage;
         private Button btnSendVideo;
 
+
         private Label lblFileName;
+
+
         private ProgressBar progressBar;
+
 
 
         protected override void Dispose(bool disposing)
@@ -43,8 +57,10 @@ namespace ChatApp
 
 
 
+
         private void InitializeComponent()
         {
+
 
             pnlTop = new Panel();
             pnlLeft = new Panel();
@@ -54,22 +70,30 @@ namespace ChatApp
             pnlFileBar = new Panel();
 
 
+
             lblCurrentUser = new Label();
             lblStatus = new Label();
 
+
             btnLogout = new Button();
+
 
 
             lblOnlineTitle = new Label();
             lblOnlineCount = new Label();
 
+
             lstOnlineUsers = new ListBox();
+
 
 
             rtbChat = new RichTextBox();
 
 
+
             txtMessage = new TextBox();
+
+
 
             btnSend = new Button();
             btnEmoji = new Button();
@@ -81,6 +105,8 @@ namespace ChatApp
 
             lblFileName = new Label();
 
+
+
             progressBar = new ProgressBar();
 
 
@@ -89,71 +115,101 @@ namespace ChatApp
 
 
 
-            // ================= TOP =================
 
 
-            pnlTop.Dock =
-                DockStyle.Top;
+            // ===========================
+            // HEADER
+            // ===========================
 
-            pnlTop.Height =
-                70;
+
+            pnlTop.Dock = DockStyle.Top;
+
+            pnlTop.Height = 80;
 
             pnlTop.BackColor =
                 Color.White;
 
 
 
-            lblCurrentUser.AutoSize=false;
+            lblCurrentUser.Text =
+                "👤 User";
 
-            lblCurrentUser.Size =
-                new Size(500,35);
 
             lblCurrentUser.Location =
-                new Point(20,8);
+                new Point(25,15);
+
+
+            lblCurrentUser.AutoSize = true;
+
 
             lblCurrentUser.Font =
                 new Font(
-                "Segoe UI",
-                14,
-                FontStyle.Bold);
+                    "Segoe UI",
+                    16,
+                    FontStyle.Bold);
 
 
 
-            lblStatus.AutoSize=true;
+            lblStatus.Text =
+                "● Online";
+
 
             lblStatus.Location =
-                new Point(25,42);
+                new Point(30,48);
+
 
             lblStatus.ForeColor =
                 Color.Green;
 
-            lblStatus.Text =
-                "🟢 Online";
 
+            lblStatus.Font =
+                new Font(
+                    "Segoe UI",
+                    10);
+
+
+
+
+            btnLogout.Text =
+                "Đăng xuất";
 
 
             btnLogout.Dock =
                 DockStyle.Right;
 
+
             btnLogout.Width =
-                120;
+                130;
 
-            btnLogout.Text =
-                "Đăng xuất";
-
-            btnLogout.BackColor =
-                Color.FromArgb(255,90,90);
-
-            btnLogout.ForeColor =
-                Color.White;
 
             btnLogout.FlatStyle =
                 FlatStyle.Flat;
 
-            btnLogout.FlatAppearance.BorderSize=0;
+
+            btnLogout.FlatAppearance.BorderSize = 0;
+
+
+            btnLogout.BackColor =
+                Color.FromArgb(
+                    255,
+                    80,
+                    90);
+
+
+            btnLogout.ForeColor =
+                Color.White;
+
+
+            btnLogout.Font =
+                new Font(
+                    "Segoe UI",
+                    10,
+                    FontStyle.Bold);
+
 
             btnLogout.Click +=
                 btnLogout_Click;
+
 
 
 
@@ -165,8 +221,13 @@ namespace ChatApp
 
 
 
-            // ================= LEFT =================
 
+
+
+
+            // ===========================
+            // SIDEBAR
+            // ===========================
 
 
             pnlLeft.Dock =
@@ -174,16 +235,24 @@ namespace ChatApp
 
 
             pnlLeft.Width =
-                220;
+                260;
 
 
             pnlLeft.BackColor =
-                Color.FromArgb(32,42,68);
+                Color.FromArgb(
+                    25,
+                    35,
+                    55);
+
 
 
 
             lblOnlineTitle.Text =
-                "NGƯỜI DÙNG";
+                "💬Thành viên";
+
+
+            lblOnlineTitle.Location =
+                new Point(25,25);
 
 
             lblOnlineTitle.ForeColor =
@@ -192,13 +261,9 @@ namespace ChatApp
 
             lblOnlineTitle.Font =
                 new Font(
-                "Segoe UI",
-                11,
-                FontStyle.Bold);
-
-
-            lblOnlineTitle.Location =
-                new Point(20,20);
+                    "Segoe UI",
+                    10,
+                    FontStyle.Bold);
 
 
 
@@ -207,42 +272,47 @@ namespace ChatApp
                 "Online: 0";
 
 
+            lblOnlineCount.Location =
+                new Point(25,60);
+
+
             lblOnlineCount.ForeColor =
                 Color.LightGreen;
-
-
-            lblOnlineCount.Location =
-                new Point(20,50);
 
 
 
 
             lstOnlineUsers.Location =
-                new Point(0,85);
+                new Point(15,100);
 
 
             lstOnlineUsers.Size =
                 new Size(
-                220,
-                500);
+                    230,
+                    550);
 
-
-            lstOnlineUsers.BorderStyle =
-                BorderStyle.None;
 
 
             lstOnlineUsers.BackColor =
-                Color.FromArgb(32,42,68);
+                Color.FromArgb(
+                    35,
+                    45,
+                    70);
+
 
 
             lstOnlineUsers.ForeColor =
                 Color.White;
 
 
+            lstOnlineUsers.BorderStyle =
+                BorderStyle.None;
+
+
             lstOnlineUsers.Font =
                 new Font(
-                "Segoe UI",
-                11);
+                    "Segoe UI",
+                    11);
 
 
 
@@ -256,12 +326,24 @@ namespace ChatApp
 
 
 
-            // ================= CHAT =================
 
+
+
+            // ===========================
+            // CHAT AREA
+            // ===========================
 
 
             pnlCenter.Dock =
                 DockStyle.Fill;
+
+
+            pnlCenter.BackColor =
+                Color.FromArgb(
+                    240,
+                    242,
+                    247);
+
 
 
 
@@ -269,37 +351,36 @@ namespace ChatApp
                 DockStyle.Fill;
 
 
-            rtbChat.ReadOnly=true;
+
+            rtbChat.ReadOnly = true;
 
 
             rtbChat.BorderStyle =
                 BorderStyle.None;
 
 
-            rtbChat.BackColor =
-                Color.FromArgb(
-                245,
-                247,
-                250);
-
 
             rtbChat.Font =
                 new Font(
-                "Segoe UI",
-                11);
+                    "Segoe UI",
+                    12);
+
+
+
+            rtbChat.BackColor =
+                Color.FromArgb(
+                    240,
+                    242,
+                    247);
 
 
 
 
-            pnlCenter.Controls.Add(rtbChat);
 
 
-
-
-
-
-            // ================= INPUT =================
-
+            // ===========================
+            // INPUT
+            // ===========================
 
 
             pnlInput.Dock =
@@ -307,7 +388,7 @@ namespace ChatApp
 
 
             pnlInput.Height =
-                60;
+                75;
 
 
             pnlInput.BackColor =
@@ -316,20 +397,28 @@ namespace ChatApp
 
 
 
+
             txtMessage.Location =
-                new Point(15,12);
+                new Point(20,15);
+
 
 
             txtMessage.Size =
                 new Size(
-                650,
-                35);
+                    650,
+                    45);
+
 
 
             txtMessage.Font =
                 new Font(
-                "Segoe UI",
-                12);
+                    "Segoe UI",
+                    12);
+
+
+
+            txtMessage.BorderStyle =
+                BorderStyle.FixedSingle;
 
 
 
@@ -340,51 +429,69 @@ namespace ChatApp
 
 
 
+
             btnEmoji.Text =
                 "😊";
 
 
             btnEmoji.Location =
-                new Point(680,12);
+                new Point(690,15);
+
 
 
             btnEmoji.Size =
                 new Size(
-                45,
-                35);
+                    45,
+                    45);
+
 
 
 
 
 
             btnSend.Text =
-                "Gửi ➤";
+                "Gửi";
 
 
             btnSend.Location =
-                new Point(730,12);
+                new Point(750,15);
+
 
 
             btnSend.Size =
                 new Size(
-                90,
-                35);
+                    100,
+                    45);
 
 
 
             btnSend.BackColor =
                 Color.FromArgb(
-                0,
-                132,
-                255);
+                    0,
+                    132,
+                    255);
+
 
 
             btnSend.ForeColor =
                 Color.White;
 
 
+
             btnSend.FlatStyle =
                 FlatStyle.Flat;
+
+
+            btnSend.FlatAppearance.BorderSize = 0;
+
+
+
+            btnSend.Font =
+                new Font(
+                    "Segoe UI",
+                    11,
+                    FontStyle.Bold);
+
 
 
             btnSend.Click +=
@@ -406,7 +513,11 @@ namespace ChatApp
 
 
 
-            // ================= FILE =================
+
+
+            // ===========================
+            // FILE BAR
+            // ===========================
 
 
 
@@ -418,18 +529,22 @@ namespace ChatApp
                 45;
 
 
+            pnlFileBar.BackColor =
+                Color.White;
+
+
+
 
             btnSendImage.Text =
                 "📷 Ảnh";
 
 
             btnSendImage.Location =
-                new Point(10,5);
+                new Point(20,5);
 
 
             btnSendImage.Click +=
                 btnSendImage_Click;
-
 
 
 
@@ -439,11 +554,12 @@ namespace ChatApp
 
 
             btnSendVideo.Location =
-                new Point(110,5);
+                new Point(120,5);
 
 
             btnSendVideo.Click +=
                 btnSendVideo_Click;
+
 
 
 
@@ -459,9 +575,7 @@ namespace ChatApp
 
 
 
-
-            // QUAN TRỌNG:
-            // Dock đúng thứ tự
+            // ADD CONTROL
 
 
             pnlCenter.Controls.Add(rtbChat);
@@ -469,25 +583,6 @@ namespace ChatApp
             pnlCenter.Controls.Add(pnlFileBar);
 
             pnlCenter.Controls.Add(pnlInput);
-
-
-
-
-
-
-            // FORM
-
-
-            ClientSize =
-                new Size(
-                1200,
-                750);
-
-
-            MinimumSize =
-                new Size(
-                1000,
-                600);
 
 
 
@@ -499,8 +594,25 @@ namespace ChatApp
 
 
 
+
+
+
+            ClientSize =
+                new Size(
+                    1200,
+                    750);
+
+
+
+            MinimumSize =
+                new Size(
+                    1000,
+                    600);
+
+
+
             Text =
-                "Chat Application";
+                "Modern Chat Application";
 
 
 
@@ -512,5 +624,6 @@ namespace ChatApp
             ResumeLayout(false);
 
         }
+
     }
 }
