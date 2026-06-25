@@ -10,6 +10,8 @@ namespace ChatApp
         private System.Windows.Forms.Panel       pnlInput;
         private System.Windows.Forms.Panel       pnlFileBar;
         private System.Windows.Forms.Label       lblCurrentUser;
+        private System.Windows.Forms.PictureBox  picAvatar;
+        private System.Windows.Forms.Button      btnChooseAvatar;
         private System.Windows.Forms.Button      btnLogout;
         private System.Windows.Forms.Label       lblOnlineTitle;
         private System.Windows.Forms.Label       lblOnlineCount;
@@ -31,7 +33,9 @@ namespace ChatApp
         private void InitializeComponent()
         {
             pnlTop = new Panel();
+            picAvatar = new PictureBox();
             lblCurrentUser = new Label();
+            btnChooseAvatar = new Button();
             btnLogout = new Button();
             pnlLeft = new Panel();
             lblOnlineTitle = new Label();
@@ -48,6 +52,7 @@ namespace ChatApp
             lblFileName = new Label();
             progressBar = new ProgressBar();
             pnlTop.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)picAvatar).BeginInit();
             pnlLeft.SuspendLayout();
             pnlCenter.SuspendLayout();
             pnlInput.SuspendLayout();
@@ -58,24 +63,54 @@ namespace ChatApp
             // 
             pnlTop.BackColor = Color.White;
             pnlTop.Controls.Add(lblCurrentUser);
+            pnlTop.Controls.Add(btnChooseAvatar);
             pnlTop.Controls.Add(btnLogout);
+            pnlTop.Controls.Add(picAvatar);
             pnlTop.Dock = DockStyle.Top;
             pnlTop.Location = new Point(0, 0);
             pnlTop.Name = "pnlTop";
             pnlTop.Size = new Size(984, 52);
             pnlTop.TabIndex = 2;
             // 
+            // picAvatar
+            // 
+            picAvatar.Dock = DockStyle.Left;
+            picAvatar.Location = new Point(0, 0);
+            picAvatar.Name = "picAvatar";
+            picAvatar.Padding = new Padding(6);
+            picAvatar.Size = new Size(52, 52);
+            picAvatar.SizeMode = PictureBoxSizeMode.Zoom;
+            picAvatar.TabIndex = 2;
+            picAvatar.TabStop = false;
+            // 
             // lblCurrentUser
             // 
             lblCurrentUser.Dock = DockStyle.Fill;
             lblCurrentUser.Font = new Font("Segoe UI", 11F, FontStyle.Bold);
             lblCurrentUser.ForeColor = Color.FromArgb(50, 50, 50);
-            lblCurrentUser.Location = new Point(0, 0);
+            lblCurrentUser.Location = new Point(52, 0);
             lblCurrentUser.Name = "lblCurrentUser";
-            lblCurrentUser.Padding = new Padding(16, 0, 0, 0);
-            lblCurrentUser.Size = new Size(874, 52);
+            lblCurrentUser.Padding = new Padding(8, 0, 0, 0);
+            lblCurrentUser.Size = new Size(712, 52);
             lblCurrentUser.TabIndex = 0;
             lblCurrentUser.TextAlign = ContentAlignment.MiddleLeft;
+            // 
+            // btnChooseAvatar
+            // 
+            btnChooseAvatar.BackColor = Color.FromArgb(224, 224, 224);
+            btnChooseAvatar.Cursor = Cursors.Hand;
+            btnChooseAvatar.Dock = DockStyle.Right;
+            btnChooseAvatar.FlatAppearance.BorderColor = Color.FromArgb(180, 180, 180);
+            btnChooseAvatar.FlatStyle = FlatStyle.Flat;
+            btnChooseAvatar.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            btnChooseAvatar.ForeColor = Color.FromArgb(50, 50, 50);
+            btnChooseAvatar.Location = new Point(764, 0);
+            btnChooseAvatar.Name = "btnChooseAvatar";
+            btnChooseAvatar.Size = new Size(110, 52);
+            btnChooseAvatar.TabIndex = 3;
+            btnChooseAvatar.Text = "Chon avatar";
+            btnChooseAvatar.UseVisualStyleBackColor = false;
+            btnChooseAvatar.Click += btnChooseAvatar_Click;
             // 
             // btnLogout
             // 
@@ -284,6 +319,7 @@ namespace ChatApp
             Text = "Chat App";
             Load += FrmChat_Load;
             pnlTop.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)picAvatar).EndInit();
             pnlLeft.ResumeLayout(false);
             pnlCenter.ResumeLayout(false);
             pnlInput.ResumeLayout(false);

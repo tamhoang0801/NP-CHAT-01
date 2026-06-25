@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
@@ -14,6 +14,7 @@ namespace ChatServerApp
         private Thread listenThread;
         private bool isRunning = false;
         private ConcurrentDictionary<string, TcpClient> onlineUsers = new ConcurrentDictionary<string, TcpClient>();
+        private ConcurrentDictionary<string, string> userAvatars = new ConcurrentDictionary<string, string>();
 
         public Form1()
         {
@@ -136,6 +137,7 @@ namespace ChatServerApp
                                         BroadcastString($"UPDATE_ONLINE|{userList}");
                                         Thread.Sleep(50);
                                         BroadcastString($"BROADCAST|[Hệ thống] {currentUsername} đã vào phòng!");
+                                        SendStoredAvatarsToClient(client);
                                     }
                                     else
                                     {
@@ -160,6 +162,10 @@ namespace ChatServerApp
                                     LogMessage($"[CHAT] {sender}: {content}");
                                     BroadcastString($"BROADCAST|{sender}: {content}", currentUsername);
                                 }
+                                break;
+
+                            case "AVATAR":
+                                HandleAvatarUpload(stream, incomingData);
                                 break;
 
                             case "LOGOUT":
@@ -290,6 +296,28 @@ namespace ChatServerApp
                     try { user.Value.GetStream().Write(data, 0, data.Length); }
                     catch { }
                 }
+            }
+        }
+
+        private void HandleAvatarUpload(NetworkStream stream, string partialData)
+        {
+            string fullMessage = AvatarMessageHelper.ReadCompleteAvatarMessage(stream, partialData);
+            if (!AvatarMessageHelper.TryParse(fullMessage, out string username, out string base64))
+                return;
+
+            userAvatars[username] = base64;
+            LogMessage($"[AVATAR] {username} da cap nhat avatar.");
+
+            string updateMessage = AvatarMessageHelper.BuildUpdateMessage(username, base64);
+            BroadcastString(updateMessage);
+        }
+
+        private void SendStoredAvatarsToClient(TcpClient client)
+        {
+            foreach (var entry in userAvatars)
+            {
+                string updateMessage = AvatarMessageHelper.BuildUpdateMessage(entry.Key, entry.Value);
+                SendToOne(client, updateMessage);
             }
         }
     }

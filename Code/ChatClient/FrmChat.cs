@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Net.Sockets;
@@ -14,6 +15,8 @@ namespace ChatApp
         private TcpClient _client;
         private NetworkStream _stream;
         private Thread _receiveThread;
+        private readonly Dictionary<string, Image> _avatarCache = new Dictionary<string, Image>();
+        private Image _myAvatarImage;
 
         public FrmChat(string username, TcpClient client)
         {
@@ -64,6 +67,13 @@ namespace ChatApp
 
             this.FormClosed += (sender, e) => Environment.Exit(0);
 
+            lstOnlineUsers.DrawMode = DrawMode.OwnerDrawFixed;
+            lstOnlineUsers.ItemHeight = 36;
+            lstOnlineUsers.DrawItem += LstOnlineUsers_DrawItem;
+
+            this.btnChooseAvatar.MouseEnter += (s, e) => this.btnChooseAvatar.BackColor = System.Drawing.Color.FromArgb(210, 210, 210);
+            this.btnChooseAvatar.MouseLeave += (s, e) => this.btnChooseAvatar.BackColor = System.Drawing.Color.FromArgb(224, 224, 224);
+
         }
 
         private void FrmChat_Load(object sender, EventArgs e)
@@ -72,6 +82,8 @@ namespace ChatApp
             lblCurrentUser.Text = "User: " + _username;
 
             AppendSystemMessage("Chào mừng " + _username + " đã kết nối vào phòng!");
+
+            InitializeMyDefaultAvatar();
 
             // Bật luồng lắng nghe liên tục
             _receiveThread = new Thread(ReceiveMessage);
@@ -145,68 +157,11 @@ namespace ChatApp
                         }
 
                         string rawData = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-                        string[] tokens = rawData.Split('|');
-                        string command = tokens[0];
+                        List<string> messages = SplitStickyPackets(rawData);
 
-                        if (command == "BROADCAST" && tokens.Length > 1)
+                        foreach (string msg in messages)
                         {
-                            string messageContent = tokens[1];
-                            string time = DateTime.Now.ToString("HH:mm");
-
-                            // Nếu là tin nhắn của hệ thống
-                            if (messageContent.StartsWith("[Hệ thống]"))
-                            {
-                                AppendSystemMessage(messageContent);
-                                if (messageContent.Contains("đóng cửa"))
-                                {
-                                    this.Invoke(new Action(() =>
-                                    {
-                                        System.Diagnostics.Process.Start(Application.ExecutablePath);
-                                        Environment.Exit(0);
-                                    }));
-                                    return;
-                                }
-                            }
-                            else
-                            {
-
-                                if (messageContent.Contains("đóng cửa"))
-                                {
-                                    this.Invoke(new Action(() =>
-                                    {
-                                        MessageBox.Show("Server đã đóng cửa!.", "Mất kết nối", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-
-                                        Application.Restart();
-                                        Environment.Exit(0); // Ép hệ thống dọn dẹp sạch tiến trình cũ
-
-                                    }));
-
-                                    return; // Cắt đứt luồng ngầm
-                                }
-
-                                int colonIndex = messageContent.IndexOf(':');
-
-                                if (colonIndex > 0)
-                                {
-
-                                    if (messageContent.Contains(": "))
-                                    {
-
-                                        string senderName = messageContent.Substring(0, colonIndex).Trim();
-
-                                        string actualContent = messageContent.Substring(colonIndex + 1).Trim();
-                                         
-                                        // In ra màn hình
-                                        AppendOtherMessage(senderName, actualContent, time);
-                                    }
-                                }
-
-                            }
-                        }
-                        else if (command == "UPDATE_ONLINE" && tokens.Length > 1)
-                        {
-                            string[] users = tokens[1].Split(',');
-                            UpdateOnlineUsers(users);
+                            ProcessSingleMessage(socket, msg);
                         }
                     }
                 }
@@ -230,6 +185,120 @@ namespace ChatApp
 
                     return;
                 }
+            }
+        }
+
+        private List<string> SplitStickyPackets(string rawData)
+        {
+            List<string> messages = new List<string>();
+            string[] prefixes = { "UPDATE_ONLINE|", "BROADCAST|", "AVATAR_UPDATE|", "ERROR|" };
+            
+            int currentIndex = 0;
+            while (currentIndex < rawData.Length)
+            {
+                int nextPrefixIndex = -1;
+                
+                foreach (string prefix in prefixes)
+                {
+                    int index = rawData.IndexOf(prefix, currentIndex + 1);
+                    if (index > 0 && (nextPrefixIndex == -1 || index < nextPrefixIndex))
+                    {
+                        nextPrefixIndex = index;
+                    }
+                }
+                
+                if (nextPrefixIndex != -1)
+                {
+                    string msg = rawData.Substring(currentIndex, nextPrefixIndex - currentIndex);
+                    messages.Add(msg);
+                    currentIndex = nextPrefixIndex;
+                }
+                else
+                {
+                    string msg = rawData.Substring(currentIndex);
+                    messages.Add(msg);
+                    break;
+                }
+            }
+            
+            return messages;
+        }
+
+        private void ProcessSingleMessage(Socket socket, string msg)
+        {
+            if (msg.StartsWith(AvatarHelper.AvatarUpdateCommand + "|"))
+            {
+                string fullAvatarMessage = AvatarHelper.ReadCompleteAvatarMessage(socket, msg);
+                if (AvatarHelper.TryParseAvatarMessage(fullAvatarMessage, out string avatarUser, out string avatarBase64))
+                    ApplyAvatarUpdate(avatarUser, avatarBase64);
+                return;
+            }
+
+            string[] tokens = msg.Split('|');
+            if (tokens.Length == 0) return;
+            string command = tokens[0];
+
+            if (command == "BROADCAST" && tokens.Length > 1)
+            {
+                string messageContent = tokens[1];
+                string time = DateTime.Now.ToString("HH:mm");
+
+                // Nếu là tin nhắn của hệ thống
+                if (messageContent.StartsWith("[Hệ thống]"))
+                {
+                    AppendSystemMessage(messageContent);
+                    if (messageContent.Contains("đóng cửa"))
+                    {
+                        this.Invoke(new Action(() =>
+                        {
+                            System.Diagnostics.Process.Start(Application.ExecutablePath);
+                            Environment.Exit(0);
+                        }));
+                        return;
+                    }
+                }
+                else
+                {
+                    if (messageContent.Contains("đóng cửa"))
+                    {
+                        this.Invoke(new Action(() =>
+                        {
+                            MessageBox.Show("Server đã đóng cửa!.", "Mất kết nối", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+
+                            Application.Restart();
+                            Environment.Exit(0); // Ép hệ thống dọn dẹp sạch tiến trình cũ
+                        }));
+                        return; // Cắt đứt luồng ngầm
+                    }
+
+                    int colonIndex = messageContent.IndexOf(':');
+
+                    if (colonIndex > 0)
+                    {
+                        if (messageContent.Contains(": "))
+                        {
+                            string senderName = messageContent.Substring(0, colonIndex).Trim();
+                            string actualContent = messageContent.Substring(colonIndex + 1).Trim();
+                                         
+                            // In ra màn hình
+                            AppendOtherMessage(senderName, actualContent, time);
+                        }
+                    }
+                }
+            }
+            else if (command == "UPDATE_ONLINE" && tokens.Length > 1)
+            {
+                string[] users = tokens[1].Split(',');
+                UpdateOnlineUsers(users);
+            }
+            else if (command == "ERROR" && tokens.Length > 1)
+            {
+                this.Invoke(new Action(() =>
+                {
+                    MessageBox.Show(tokens[1], "Lỗi đăng nhập", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    System.Diagnostics.Process.Start(Application.ExecutablePath);
+                    Environment.Exit(0);
+                }));
             }
         }
 
@@ -399,6 +468,113 @@ namespace ChatApp
             rtbChat.SelectionFont = new Font(rtbChat.Font, style);
             rtbChat.AppendText(text);
             rtbChat.SelectionColor = rtbChat.ForeColor;
+        }
+
+        private void InitializeMyDefaultAvatar()
+        {
+            ApplyAvatarUpdate(_username, null);
+        }
+
+        private void btnChooseAvatar_Click(object sender, EventArgs e)
+        {
+            using OpenFileDialog ofd = new OpenFileDialog
+            {
+                Filter = "JPEG Files|*.jpg",
+                Title = "Chon avatar (.jpg)"
+            };
+
+            if (ofd.ShowDialog() != DialogResult.OK)
+                return;
+
+            if (!AvatarHelper.TryValidateAvatarFile(ofd.FileName, out string validationError))
+            {
+                MessageBox.Show(validationError, "Loi avatar", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            try
+            {
+                string base64 = AvatarHelper.ImageFileToBase64(ofd.FileName);
+                string msg = AvatarHelper.BuildAvatarUploadMessage(_username, base64);
+                byte[] data = Encoding.UTF8.GetBytes(msg);
+                _stream.Write(data, 0, data.Length);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Loi khi chon avatar: " + ex.Message);
+            }
+        }
+
+        private void ApplyAvatarUpdate(string username, string base64)
+        {
+            if (InvokeRequired)
+            {
+                Invoke(new Action(() => ApplyAvatarUpdate(username, base64)));
+                return;
+            }
+
+            try
+            {
+                Image avatarImage = string.IsNullOrEmpty(base64)
+                    ? AvatarHelper.GetDefaultAvatar(username, 64)
+                    : AvatarHelper.Base64ToImage(base64);
+
+                SetUserAvatarCache(username, avatarImage);
+
+                if (username == _username)
+                {
+                    _myAvatarImage?.Dispose();
+                    _myAvatarImage = avatarImage;
+                    Image oldHeaderAvatar = picAvatar.Image;
+                    picAvatar.Image = AvatarHelper.ToThumbnail(_myAvatarImage, picAvatar.Width - 12);
+                    oldHeaderAvatar?.Dispose();
+                }
+
+                lstOnlineUsers.Invalidate();
+            }
+            catch { }
+        }
+
+        private void SetUserAvatarCache(string username, Image avatarImage)
+        {
+            if (_avatarCache.TryGetValue(username, out Image oldImage))
+            {
+                if (!ReferenceEquals(oldImage, _myAvatarImage))
+                    oldImage.Dispose();
+            }
+
+            _avatarCache[username] = avatarImage;
+        }
+
+        private Image GetAvatarForUser(string username)
+        {
+            if (_avatarCache.TryGetValue(username, out Image cached))
+                return cached;
+
+            Image defaultAvatar = AvatarHelper.GetDefaultAvatar(username, 28);
+            _avatarCache[username] = defaultAvatar;
+            return defaultAvatar;
+        }
+
+        private void LstOnlineUsers_DrawItem(object sender, DrawItemEventArgs e)
+        {
+            if (e.Index < 0)
+                return;
+
+            e.DrawBackground();
+
+            string itemText = lstOnlineUsers.Items[e.Index]?.ToString() ?? "";
+            string username = itemText.StartsWith("Online - ")
+                ? itemText.Substring("Online - ".Length)
+                : itemText;
+
+            Image avatar = GetAvatarForUser(username);
+            e.Graphics.DrawImage(avatar, e.Bounds.Left + 6, e.Bounds.Top + 4, 28, 28);
+
+            using SolidBrush brush = new SolidBrush(e.ForeColor);
+            e.Graphics.DrawString(itemText, e.Font, brush, e.Bounds.Left + 40, e.Bounds.Top + 8);
+
+            e.DrawFocusRectangle();
         }
     }
 }
