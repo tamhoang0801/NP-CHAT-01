@@ -124,11 +124,10 @@ namespace ChatApp
 
             pnlTop.Dock = DockStyle.Top;
 
-            pnlTop.Height = 80;
+            pnlTop.Height = 50;
 
             pnlTop.BackColor =
                 Color.White;
-
 
 
             lblCurrentUser.Text =
@@ -250,10 +249,10 @@ namespace ChatApp
             lblOnlineTitle.Text =
                 "💬Thành viên";
 
-
+            
             lblOnlineTitle.Location =
                 new Point(25,25);
-
+            lblOnlineTitle.Size = new Size(200, 30);
 
             lblOnlineTitle.ForeColor =
                 Color.White;
@@ -396,8 +395,6 @@ namespace ChatApp
 
 
 
-
-
             txtMessage.Location =
                 new Point(20,15);
 
@@ -413,7 +410,7 @@ namespace ChatApp
             txtMessage.Font =
                 new Font(
                     "Segoe UI",
-                    12);
+                    20);
 
 
 
@@ -424,11 +421,6 @@ namespace ChatApp
 
             txtMessage.KeyDown +=
                 txtMessage_KeyDown;
-
-
-
-
-
 
             btnEmoji.Text =
                 "😊";
@@ -444,13 +436,19 @@ namespace ChatApp
                     45,
                     45);
 
-
+            btnEmoji.Font =
+                new Font(
+                    "Segoe UI Emoji",
+                    18,
+                    FontStyle.Regular);
+            btnEmoji.ForeColor = 
+                Color.OrangeRed;
 
 
 
 
             btnSend.Text =
-                "Gửi";
+                " Gửi ➤";
 
 
             btnSend.Location =
@@ -533,8 +531,6 @@ namespace ChatApp
                 Color.White;
 
 
-
-
             btnSendImage.Text =
                 "📷 Ảnh";
 
@@ -542,6 +538,7 @@ namespace ChatApp
             btnSendImage.Location =
                 new Point(20,5);
 
+            btnSendImage.Size = new Size(90,35);
 
             btnSendImage.Click +=
                 btnSendImage_Click;
@@ -552,9 +549,10 @@ namespace ChatApp
             btnSendVideo.Text =
                 "🎥 Video";
 
-
+            btnSendVideo.Size = new Size(90,35);
+            
             btnSendVideo.Location =
-                new Point(120,5);
+                new Point(150,5);
 
 
             btnSendVideo.Click +=
