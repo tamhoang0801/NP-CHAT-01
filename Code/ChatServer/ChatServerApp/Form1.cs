@@ -126,31 +126,34 @@ namespace ChatServerApp
                             case "LOGIN":
                                 if (parts.Length >= 2)
                                 {
-                                    currentUsername = parts[1];
-                                    if (onlineUsers.TryAdd(currentUsername, client))
+                                    string requestedName = parts[1];
+
+                                    if (CheckAndAutoRegisterUser(requestedName))
                                     {
-                                        LogMessage($"[ĐĂNG NHẬP] {currentUsername} đã vào phòng.");
-                                        UpdateStatusUI();
+                                        if (onlineUsers.TryAdd(requestedName, client))
+                                        {
+                                            currentUsername = requestedName;
 
-                                        // Gửi danh sách Online mới nhất cho tất cả Client
-                                        string userList = string.Join(",", onlineUsers.Keys);
-                                        BroadcastString($"UPDATE_ONLINE|{userList}");
-                                        Thread.Sleep(50);
-                                        BroadcastString($"BROADCAST|[Hệ thống] {currentUsername} đã vào phòng!");
-                                        SendStoredAvatarsToClient(client);
-                                    }
-                                    else
-                                    {
-                                        LogMessage($"[TỪ CHỐI] {currentUsername} đăng nhập trùng tên.");
+                                            LogMessage($"[ĐĂNG NHẬP] {currentUsername} đã vào phòng.");
+                                            UpdateStatusUI();
 
-                                        // 2. TỪ CHỐI: Gửi vé 'ERROR' kèm lời chửi thẳng về cho Client
-                                        byte[] errorData = Encoding.UTF8.GetBytes("ERROR|Tên đăng nhập đã tồn tại!");
-                                        stream.Write(errorData, 0, errorData.Length);
+                                            // Gửi danh sách Online mới nhất cho tất cả Client
+                                            string userList = string.Join(",", onlineUsers.Keys);
+                                            BroadcastString($"UPDATE_ONLINE|{userList}");
+                                            Thread.Sleep(50);
+                                            BroadcastString($"BROADCAST|[Hệ thống] {currentUsername} đã vào phòng!");
+                                        }
+                                        else
+                                        {
+                                            LogMessage($"[TỪ CHỐI] {currentUsername} đăng nhập trùng tên.");
 
-                                        // 3. Khóa van và giết luồng
-                                        client.Close();
-                                        return;
-                                    }
+                                            //Gửi tb 'ERROR'về cho Client
+                                            byte[] errorData = Encoding.UTF8.GetBytes("ERROR|Tên đăng nhập đã tồn tại!");
+                                            stream.Write(errorData, 0, errorData.Length);
+                                            
+                                            client.Close();
+                                            return;
+                                        }
                                 }
                                 break;
 
@@ -256,6 +259,51 @@ namespace ChatServerApp
             btnStop.Enabled = false;
             txtPort.Enabled = true;
         }
+
+         private bool CheckAndAutoRegisterUser(string username)
+         {
+         string connectionString = "Server=127.0.0.1; Port=3366; Database=ChatAppDB; Uid=root; Pwd=;";
+         
+         using (MySqlConnection conn = new MySqlConnection(connectionString))
+         {
+         try
+         {
+             conn.Open();
+
+             string checkQuery = "SELECT COUNT(*) FROM TblUsers WHERE Username = @user";
+             using (MySqlCommand cmdCheck = new MySqlCommand(checkQuery, conn))
+             {
+                 cmdCheck.Parameters.AddWithValue("@user", username);
+                 int userCount = Convert.ToInt32(cmdCheck.ExecuteScalar());
+
+                 if (userCount > 0)
+                 {
+                     return true;
+                 }
+             }
+
+             string insertQuery = "INSERT INTO TblUsers (Username) VALUES (@user)";
+             using (MySqlCommand cmdInsert = new MySqlCommand(insertQuery, conn))
+             {
+                 cmdInsert.Parameters.AddWithValue("@user", username);
+
+                 cmdInsert.ExecuteNonQuery();
+
+                 LogMessage($"[HỆ THỐNG] Đã tự động tạo tài khoản mới cho: {username}");
+             }
+             
+             return true;
+         }
+         catch (Exception ex)
+         {
+             LogMessage("[LỖI DATABASE]: " + ex.Message);
+             return false;
+         }
+     }
+ }
+
+
+        
 
         private void LogMessage(string message)
         {
