@@ -142,11 +142,21 @@ namespace ChatApp
 
         public static Image GetDefaultAvatar(string username, int size = 64)
         {
-            Bitmap bmp = new Bitmap(size, size);
+            Bitmap bmp = new Bitmap(size, size, PixelFormat.Format32bppArgb);
             using (Graphics g = Graphics.FromImage(bmp))
             {
                 g.SmoothingMode = SmoothingMode.AntiAlias;
-                g.Clear(Color.FromArgb(120, 140, 180));
+                g.Clear(Color.Transparent);
+
+                // Vẽ nền hình tròn
+                using (var path = new System.Drawing.Drawing2D.GraphicsPath())
+                {
+                    path.AddEllipse(0, 0, size - 1, size - 1);
+                    g.SetClip(path);
+                    using var bgBrush = new SolidBrush(Color.FromArgb(120, 140, 180));
+                    g.FillEllipse(bgBrush, 0, 0, size - 1, size - 1);
+                }
+
                 char letter = string.IsNullOrEmpty(username) ? '?' : char.ToUpper(username[0]);
                 using Font font = new Font("Segoe UI", size / 2.2f, FontStyle.Bold);
                 SizeF sz = g.MeasureString(letter.ToString(), font);
@@ -162,7 +172,24 @@ namespace ChatApp
 
         public static Image ToThumbnail(Image source, int size)
         {
-            return ResizeImage(source, size, size);
+            return MakeCircular(ResizeImage(source, size, size), size);
+        }
+
+        /// <summary>Cắt ảnh vuông thành hình tròn với góc trong suốt.</summary>
+        public static Bitmap MakeCircular(Image source, int size)
+        {
+            Bitmap bmp = new Bitmap(size, size, PixelFormat.Format32bppArgb);
+            using (Graphics g = Graphics.FromImage(bmp))
+            {
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.Clear(Color.Transparent);
+                using var path = new System.Drawing.Drawing2D.GraphicsPath();
+                path.AddEllipse(0, 0, size - 1, size - 1);
+                g.SetClip(path);
+                g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                g.DrawImage(source, 0, 0, size, size);
+            }
+            return bmp;
         }
 
         private static Image ResizeImage(Image img, int width, int height)
