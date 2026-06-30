@@ -569,7 +569,16 @@ namespace ChatApp
                 : itemText;
 
             Image avatar = GetAvatarForUser(username);
-            e.Graphics.DrawImage(avatar, e.Bounds.Left + 6, e.Bounds.Top + 4, 28, 28);
+
+            // Vẽ avatar hình tròn
+            int avatarSize = 28;
+            int avatarX = e.Bounds.Left + 6;
+            int avatarY = e.Bounds.Top + 4;
+            using (Bitmap circleAvatar = AvatarHelper.MakeCircular(avatar, avatarSize))
+            {
+                e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                e.Graphics.DrawImage(circleAvatar, avatarX, avatarY, avatarSize, avatarSize);
+            }
 
             using SolidBrush brush = new SolidBrush(e.ForeColor);
             e.Graphics.DrawString(itemText, e.Font, brush, e.Bounds.Left + 40, e.Bounds.Top + 8);
