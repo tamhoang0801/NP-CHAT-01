@@ -419,7 +419,14 @@ namespace ChatApp
             }
             lstOnlineUsers.Items.Clear();
             foreach (string user in onlineList)
-                lstOnlineUsers.Items.Add("Online - " + user);
+            {
+                string cleanUser = user.Trim();
+
+                if (!string.IsNullOrEmpty(cleanUser))
+                {
+                    lstOnlineUsers.Items.Add("Online - " + cleanUser);
+                }
+            }
             lblOnlineCount.Text = "Online: " + onlineList.Length;
         }
 
