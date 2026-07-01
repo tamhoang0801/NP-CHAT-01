@@ -158,6 +158,9 @@ namespace ChatApp
             frm.FormClosed += (s, e) => _privateChats.Remove(partner);
             _privateChats[partner] = frm;
 
+            byte[] req = Encoding.UTF8.GetBytes($"GET_PRIVATE|{_username}|{partner}\n");
+            _stream.Write(req, 0, req.Length);
+
             frm.StartPosition = FormStartPosition.CenterParent;
             frm.Show(this);
             frm.BringToFront();
@@ -291,7 +294,7 @@ namespace ChatApp
         private List<string> SplitStickyPackets(string rawData)
         {
             List<string> messages = new List<string>();
-            string[] prefixes = { "UPDATE_ONLINE|", "BROADCAST|", "AVATAR_UPDATE|", "ERROR|", "WARNING|", "PRIVATE|" };
+            string[] prefixes = { "UPDATE_ONLINE|", "BROADCAST|", "AVATAR_UPDATE|", "ERROR|", "WARNING|", "PRIVATE|", "HISTORY_GROUP|", "HISTORY_PRV|" };
             int currentIndex = 0;
             while (currentIndex < rawData.Length)
             {
@@ -340,7 +343,7 @@ namespace ChatApp
             if (command == "BROADCAST" && tokens.Length > 1)
             {
                 string messageContent = tokens[1];
-                string time = DateTime.Now.ToString("HH:mm");
+                string time = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
 
                 if (messageContent.StartsWith("[Hệ thống]"))
                 {
@@ -414,6 +417,31 @@ namespace ChatApp
                     MessageBox.Show(tokens[1], "Thông báo hệ thống", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }));
             }
+            else if (command == "HISTORY_GROUP" && tokens.Length >= 4)
+            {
+                string hSender = tokens[1];
+                string hContent = tokens[2];
+                string hTime = tokens[3].Trim();
+
+                if (hSender == _username)
+                    AppendMyMessage(hSender, hContent, hTime);
+                else
+                    AppendOtherMessage(hSender, hContent, hTime);
+            }
+            else if (command == "HISTORY_PRV" && tokens.Length >= 5)
+            {
+                string pPartner = tokens[1];
+                string hSender = tokens[2];
+                string hContent = tokens[3];
+                string hTime = tokens[4].Trim();
+
+                this.Invoke(new Action(() =>
+                {
+
+                    var frm = OpenPrivateChat(pPartner);
+                    frm.AppendHistoryMessage(hSender, hContent, hTime);
+                }));
+            }
         }
 
 
@@ -436,7 +464,7 @@ namespace ChatApp
             string content = txtMessage.Text.Trim();
             if (content == "") return;
 
-            string time = DateTime.Now.ToString("HH:mm");
+            string time = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
             AppendMyMessage(_username, content, time);
 
             try
@@ -485,7 +513,7 @@ namespace ChatApp
                         _stream.Write(fileData, 0, fileData.Length);
 
                         string typeStr = typeCode == 0x10 ? "Ảnh" : "Video";
-                        string time = DateTime.Now.ToString("HH:mm");
+                        string time = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
                         AppendMyMessage(_username, $"[Bạn đã gửi 1 tệp {typeStr}]", time);
                     }
                     catch (Exception ex)

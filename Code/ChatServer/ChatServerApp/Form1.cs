@@ -1,3 +1,5 @@
+using MySql.Data.MySqlClient;
+using Org.BouncyCastle.Asn1.Ocsp;
 using System;
 using System.Collections.Concurrent;
 using System.Net;
@@ -5,7 +7,6 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
-using MySql.Data.MySqlClient;
 
 namespace ChatServerApp
 {
@@ -189,6 +190,9 @@ namespace ChatServerApp
                                             SendStoredAvatarsToClient(client);
                                             Thread.Sleep(50);
 
+                                            SendGroupHistoryToClient(client);
+                                            Thread.Sleep(50);
+
                                             string updateMsg = AvatarMessageHelper.BuildUpdateMessage(currentUsername, myAvatarBase64);
                                             BroadcastString(updateMsg, currentUsername);
                                         }
@@ -218,7 +222,11 @@ namespace ChatServerApp
                                     string pSender = parts[1];
                                     string pReceiver = parts[2];
                                     string pContent = parts[3];
+
+                                    SavePrivateMessage(pSender, pReceiver, pContent);
+
                                     LogMessage($"[RIÊNG] {pSender} -> {pReceiver}: {pContent}");
+
 
                                     if (onlineUsers.TryGetValue(pReceiver, out TcpClient targetClient))
                                     {
@@ -230,6 +238,14 @@ namespace ChatServerApp
                                             SendToOne(senderClient, $"WARNING|{pReceiver} hiện không online!");
                                     }
                                 }
+                                break;
+
+                            case "GET_PRIVATE":
+                                string reqUser = parts[1];
+                                string targetUser = parts[2].Trim().Replace("\n", ""); ;
+
+                                SendPrivateHistoryToClient(client, reqUser, targetUser);
+
                                 break;
 
                             case "REGISTER":
@@ -264,6 +280,8 @@ namespace ChatServerApp
                                     string sender = parts[1];
                                     string content = parts[2];
                                     LogMessage($"[CHAT] {sender}: {content}");
+
+                                    SaveGroupMessage(sender, content);
                                     BroadcastString($"BROADCAST|{sender}: {content}", currentUsername);
                                 }
                                 break;
@@ -567,6 +585,122 @@ namespace ChatServerApp
                     try { user.Value.GetStream().Write(data, 0, data.Length); }
                     catch { }
                 }
+            }
+        }
+        //lưu tin nhắn chung vào Database
+        private void SaveGroupMessage(string sender, string content)
+        {
+            string time = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
+            string connStr = "Server=127.0.0.1; Port=3366; Database=ChatAppDB; Uid=root; Pwd=;";
+            using (MySqlConnection conn = new MySqlConnection(connStr))
+            {
+                try
+                {
+                    conn.Open();
+                    string query = "INSERT INTO TblGroupMessages (Sender, Content, SendTime) VALUES (@sender, @content, @time)";
+                    using (MySqlCommand cmd = new MySqlCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@sender", sender);
+                        cmd.Parameters.AddWithValue("@content", content);
+                        cmd.Parameters.AddWithValue("@time", time);
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+                catch (Exception ex) { LogMessage("[LỖI LƯU TIN NHẮN]: " + ex.Message); }
+            }
+        }
+
+        // đọc và gửi lịch sử cho người mới vào phòng
+        private void SendGroupHistoryToClient(TcpClient client)
+        {
+            string connStr = "Server=127.0.0.1; Port=3366; Database=ChatAppDB; Uid=root; Pwd=;";
+            using (MySqlConnection conn = new MySqlConnection(connStr))
+            {
+                try
+                {
+                    conn.Open();
+                    // Lấy toàn bộ lịch sử (sắp xếp theo ID từ cũ đến mới)
+                    string query = "SELECT Sender, Content, SendTime FROM TblGroupMessages ORDER BY Id ASC";
+                    using (MySqlCommand cmd = new MySqlCommand(query, conn))
+                    using (MySqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            string sender = reader.GetString("Sender");
+                            string content = reader.GetString("Content");
+                            string time = reader.GetString("SendTime");
+
+
+                            string msg = $"HISTORY_GROUP|{sender}|{content}|{time}\n";
+                            SendToOne(client, msg);
+                            Thread.Sleep(20);
+                        }
+                    }
+                }
+                catch (Exception ex) { LogMessage("[LỖI ĐỌC LỊCH SỬ]: " + ex.Message); }
+            }
+        }
+
+        private void SavePrivateMessage(string sender, string receiver, string content)
+        {
+            string time = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
+            string connStr = "Server=127.0.0.1; Port=3366; Database=ChatAppDB; Uid=root; Pwd=;";
+            using (MySqlConnection conn = new MySqlConnection(connStr))
+            {
+                try
+                {
+                    conn.Open();
+                    string query = "INSERT INTO TblPrivateMessages (Sender, Receiver, Content, SendTime) VALUES (@s, @r, @c, @t)";
+                    using (MySqlCommand cmd = new MySqlCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@s", sender);
+                        cmd.Parameters.AddWithValue("@r", receiver);
+                        cmd.Parameters.AddWithValue("@c", content);
+                        cmd.Parameters.AddWithValue("@t", time);
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+                catch (Exception ex) { LogMessage("[LỖI LƯU TIN RIÊNG]: " + ex.Message); }
+            }
+        }
+
+
+        private void SendPrivateHistoryToClient(TcpClient client, string myName, string partnerName)
+        {
+            string connStr = "Server=127.0.0.1; Port=3366; Database=ChatAppDB; Uid=root; Pwd=;";
+            using (MySqlConnection conn = new MySqlConnection(connStr))
+            {
+                try
+                {
+                    conn.Open();
+
+                    string query = "SELECT Sender, Content, SendTime FROM TblPrivateMessages " +
+                                   "WHERE (Sender = @me AND Receiver = @partner) " +
+                                   "   OR (Sender = @partner AND Receiver = @me) " +
+                                   "ORDER BY Id ASC";
+
+                    using (MySqlCommand cmd = new MySqlCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@me", myName);
+                        cmd.Parameters.AddWithValue("@partner", partnerName);
+
+                        using (MySqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                string sender = reader.GetString("Sender");
+                                string content = reader.GetString("Content");
+                                string time = reader.GetString("SendTime");
+
+
+                                string msg = $"HISTORY_PRV|{partnerName}|{sender}|{content}|{time}\n";
+                                SendToOne(client, msg);
+                                Thread.Sleep(20);
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex) { LogMessage("[LỖI ĐỌC LỊCH SỬ RIÊNG]: " + ex.Message); }
             }
         }
     }

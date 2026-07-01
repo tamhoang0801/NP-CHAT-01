@@ -7,9 +7,10 @@ using System.Windows.Forms;
 
 namespace ChatApp
 {
-    /// <summary>Cửa sổ chat riêng 1-1: emoji + avatar + gửi ảnh/video riêng.</summary>
+
     public class FrmPrivateChat : Form
     {
+        private bool _isHistoryLoaded = false;
         private readonly string _myName;
         private readonly string _partner;
         private readonly NetworkStream _stream;
@@ -32,7 +33,7 @@ namespace ChatApp
             this.Size = new Size(460, 540);
             this.StartPosition = FormStartPosition.CenterParent;
 
-            // Header: avatar + tên
+
             var pnlHeader = new Panel { Dock = DockStyle.Top, Height = 50, BackColor = Color.FromArgb(245, 245, 245) };
             var picPartner = new PictureBox { Size = new Size(38, 38), Location = new Point(8, 6), SizeMode = PictureBoxSizeMode.StretchImage };
             if (partnerAvatar != null)
@@ -43,7 +44,6 @@ namespace ChatApp
 
             _rtb = new RichTextBox { Dock = DockStyle.Fill, ReadOnly = true, BackColor = Color.White, Font = new Font("Segoe UI Emoji", 10F) };
 
-            // Thanh nhập: [input] [📷] [🎬] [😊] [Gửi]
             var pnlBottom = new Panel { Dock = DockStyle.Bottom, Height = 44 };
             _btnSend = new Button { Text = "Gửi", Dock = DockStyle.Right, Width = 66 };
             _btnEmoji = new Button { Text = "😊", Dock = DockStyle.Right, Width = 42, Font = new Font("Segoe UI Emoji", 12F) };
@@ -75,7 +75,8 @@ namespace ChatApp
             {
                 byte[] data = Encoding.UTF8.GetBytes($"PRIVATE|{_myName}|{_partner}|{content}");
                 _stream.Write(data, 0, data.Length);
-                AppendLine("Tôi", content, Color.Blue);
+                string time = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
+                AppendPrivateMessage(time, _myName, content, Color.FromArgb(40, 100, 180));
                 _txtInput.Clear();
                 _txtInput.Focus();
             }
@@ -98,7 +99,8 @@ namespace ChatApp
                     Array.Copy(recvBytes, 0, packet, 10, recvBytes.Length);
                     Array.Copy(fileData, 0, packet, 10 + recvBytes.Length, fileData.Length);
                     _stream.Write(packet, 0, packet.Length);
-                    AppendLine("Tôi", $"[Đã gửi 1 {typeStr}]", Color.Blue);
+                    string time = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
+                    AppendPrivateMessage(time, _myName, $"[Đã gửi 1 {typeStr}]", Color.FromArgb(40, 100, 180));
                 }
                 catch (Exception ex) { AppendLine("[Lỗi]", "Không gửi được file: " + ex.Message, Color.Red); }
             }
@@ -116,6 +118,52 @@ namespace ChatApp
             _rtb.SelectionColor = color;
             _rtb.AppendText($"{who} [{DateTime.Now:HH:mm}]: {content}\n");
             _rtb.ScrollToCaret();
+        }
+
+        public void AppendHistoryMessage(string senderName, string content, string time)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => AppendHistoryMessage(senderName, content, time)));
+                return;
+            }
+
+            if (!_isHistoryLoaded)
+            {
+                _rtb.Clear();
+                _isHistoryLoaded = true;
+            }
+
+            if (senderName == _myName)
+            {
+                AppendPrivateMessage(time, senderName, content, Color.FromArgb(40, 100, 180));
+            }
+            else
+            {
+                AppendPrivateMessage(time, senderName, content, Color.FromArgb(160, 90, 30));
+            }
+        }
+
+        private void AppendPrivateMessage(string time, string name, string content, Color nameColor)
+        {
+            AppendPrivateColoredText("[" + time + "] ", Color.FromArgb(150, 150, 150));
+            AppendPrivateColoredText(name + ": ", nameColor, true);
+            AppendPrivateColoredText(content + "\n", Color.FromArgb(50, 50, 50));
+            _rtb.ScrollToCaret();
+        }
+
+        private void AppendPrivateColoredText(string text, Color color, bool bold = false, bool italic = false)
+        {
+
+            _rtb.SelectionStart = _rtb.TextLength;
+            _rtb.SelectionLength = 0;
+            _rtb.SelectionColor = color;
+            FontStyle style = FontStyle.Regular;
+            if (bold) style |= FontStyle.Bold;
+            if (italic) style |= FontStyle.Italic;
+            _rtb.SelectionFont = new Font(_rtb.Font, style);
+            _rtb.AppendText(text);
+            _rtb.SelectionColor = _rtb.ForeColor;
         }
     }
 }
