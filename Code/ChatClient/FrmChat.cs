@@ -9,7 +9,7 @@ using System.Windows.Forms;
 
 namespace ChatApp
 {
-    public partial class    FrmChat : Form
+    public partial class FrmChat : Form
     {
         private readonly string _username;
         private TcpClient _client;
@@ -17,6 +17,7 @@ namespace ChatApp
         private Thread _receiveThread;
         private readonly Dictionary<string, Image> _avatarCache = new Dictionary<string, Image>();
         private Image _myAvatarImage;
+        private readonly Dictionary<string, FrmPrivateChat> _privateChats = new Dictionary<string, FrmPrivateChat>();
 
         public FrmChat(string username, TcpClient client)
         {
@@ -25,6 +26,35 @@ namespace ChatApp
             _stream = _client.GetStream();
             InitializeComponent();
 
+            var btnEmoji = new Button
+            {
+                Text = "😊",
+                Width = 40,
+                Height = this.txtMessage.Height,
+                Font = new System.Drawing.Font("Segoe UI Emoji", 12F),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = System.Drawing.Color.FromArgb(224, 224, 224),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
+            };
+            this.pnlInput.Controls.Add(btnEmoji);
+
+            btnEmoji.Location = new System.Drawing.Point(this.btnSend.Left - btnEmoji.Width - 5, this.txtMessage.Top);
+            btnEmoji.BringToFront();
+
+            this.txtMessage.Width = btnEmoji.Left - this.txtMessage.Left - 5;
+
+            btnEmoji.Click += (s, e) =>
+            {
+                var picker = new EmojiPickerForm(this.txtMessage);
+                picker.StartPosition = FormStartPosition.Manual;
+                picker.Location = this.PointToScreen(new System.Drawing.Point(
+                    this.pnlInput.Left + btnEmoji.Left,
+                    this.pnlInput.Top + btnEmoji.Top - picker.Height));
+                picker.Show(this);
+            };
+
+            this.lstOnlineUsers.MouseDoubleClick += LstOnlineUsers_MouseDoubleClick;
+            this.lstOnlineUsers.MouseClick += LstOnlineUsers_MouseDoubleClick;
             this.pnlTop.Paint += (s, e) =>
             {
                 e.Graphics.DrawLine(
@@ -92,6 +122,48 @@ namespace ChatApp
         }
 
 
+        private void LstOnlineUsers_MouseDoubleClick(object sender, MouseEventArgs e)
+        {
+            try
+            {
+                int index = lstOnlineUsers.IndexFromPoint(e.Location);
+                if (index < 0 || index >= lstOnlineUsers.Items.Count)
+                    index = lstOnlineUsers.SelectedIndex;
+                if (index < 0 || index >= lstOnlineUsers.Items.Count) return;
+
+                string item = lstOnlineUsers.Items[index].ToString();
+                string partner = item.StartsWith("Online - ") ? item.Substring("Online - ".Length).Trim() : item.Trim();
+                if (partner == "" || partner == _username) return;
+
+                OpenPrivateChat(partner);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Lỗi mở chat riêng: " + ex.Message);
+            }
+        }
+
+        private FrmPrivateChat OpenPrivateChat(string partner)
+        {
+            if (_privateChats.TryGetValue(partner, out var existing) && !existing.IsDisposed)
+            {
+                if (!existing.Visible) existing.Show(this);
+                existing.WindowState = FormWindowState.Normal;
+                existing.BringToFront();
+                existing.Activate();
+                return existing;
+            }
+
+            var frm = new FrmPrivateChat(_username, partner, _stream, _myAvatarImage, GetAvatarForUser(partner));
+            frm.FormClosed += (s, e) => _privateChats.Remove(partner);
+            _privateChats[partner] = frm;
+
+            frm.StartPosition = FormStartPosition.CenterParent;
+            frm.Show(this);
+            frm.BringToFront();
+            frm.Activate();
+            return frm;
+        }
         private void ReceiveMessage()
         {
             Socket socket = _client.Client;
@@ -144,7 +216,35 @@ namespace ChatApp
 
                         AppendSystemMessage($"[Hệ thống] Bạn nhận được 1 {type}. Đã lưu tại: {savePath}");
                     }
+                    // NHẬN FILE RIÊNG (0x22: Ảnh, 0x23: Video)
+                    else if (firstByte == 0x22 || firstByte == 0x23)
+                    {
+                        byte[] header = new byte[9];
+                        ReadExact(socket, header, 9);
+                        long dataSize = BitConverter.ToInt64(header, 1);
 
+                        byte[] lenByte = new byte[1];
+                        ReadExact(socket, lenByte, 1);
+                        int senderLen = lenByte[0];
+                        byte[] senderBytes = new byte[senderLen];
+                        ReadExact(socket, senderBytes, senderLen);
+                        string sender = Encoding.UTF8.GetString(senderBytes);
+
+                        byte[] payload = new byte[dataSize];
+                        ReadExact(socket, payload, (int)dataSize);
+
+                        string type = firstByte == 0x22 ? "Ảnh" : "Video";
+                        string ext = firstByte == 0x22 ? ".jpg" : ".mp4";
+                        string fileName = $"Rieng_{type}_{DateTime.Now:yyyyMMdd_HHmmss}{ext}";
+                        string savePath = Path.Combine(Application.StartupPath, fileName);
+                        File.WriteAllBytes(savePath, payload);
+
+                        this.Invoke(new Action(() =>
+                        {
+                            var frm = OpenPrivateChat(sender);
+                            frm.ReceiveMessage($"[{type}] đã nhận, lưu tại: {savePath}");
+                        }));
+                    }
                     // NẾU LÀ CHỮ (TEXT)
                     else
                     {
@@ -191,13 +291,12 @@ namespace ChatApp
         private List<string> SplitStickyPackets(string rawData)
         {
             List<string> messages = new List<string>();
-            string[] prefixes = { "UPDATE_ONLINE|", "BROADCAST|", "AVATAR_UPDATE|", "ERROR|", "WARNING|" };
-
+            string[] prefixes = { "UPDATE_ONLINE|", "BROADCAST|", "AVATAR_UPDATE|", "ERROR|", "WARNING|", "PRIVATE|" };
             int currentIndex = 0;
             while (currentIndex < rawData.Length)
             {
                 int nextPrefixIndex = -1;
-                
+
                 foreach (string prefix in prefixes)
                 {
                     int index = rawData.IndexOf(prefix, currentIndex + 1);
@@ -206,7 +305,7 @@ namespace ChatApp
                         nextPrefixIndex = index;
                     }
                 }
-                
+
                 if (nextPrefixIndex != -1)
                 {
                     string msg = rawData.Substring(currentIndex, nextPrefixIndex - currentIndex);
@@ -220,7 +319,7 @@ namespace ChatApp
                     break;
                 }
             }
-            
+
             return messages;
         }
 
@@ -278,7 +377,7 @@ namespace ChatApp
                         {
                             string senderName = messageContent.Substring(0, colonIndex).Trim();
                             string actualContent = messageContent.Substring(colonIndex + 1).Trim();
-                                         
+
                             AppendOtherMessage(senderName, actualContent, time);
                         }
                     }
@@ -288,6 +387,16 @@ namespace ChatApp
             {
                 string[] users = tokens[1].Split(',');
                 UpdateOnlineUsers(users);
+            }
+            else if (command == "PRIVATE" && tokens.Length >= 3)
+            {
+                string pSender = tokens[1];
+                string pContent = tokens[2];
+                this.Invoke(new Action(() =>
+                {
+                    var frm = OpenPrivateChat(pSender);
+                    frm.ReceiveMessage(pContent);
+                }));
             }
             else if (command == "ERROR" && tokens.Length > 1)
             {
@@ -409,7 +518,16 @@ namespace ChatApp
             Environment.Exit(0);
         }
 
-
+        private void ReadExact(System.Net.Sockets.Socket socket, byte[] buffer, int count)
+        {
+            int total = 0;
+            while (total < count)
+            {
+                int r = socket.Receive(buffer, total, count - total, System.Net.Sockets.SocketFlags.None);
+                if (r == 0) throw new Exception("Mất kết nối khi nhận file riêng");
+                total += r;
+            }
+        }
         public void UpdateOnlineUsers(string[] onlineList)
         {
             if (lstOnlineUsers.InvokeRequired)
@@ -424,6 +542,7 @@ namespace ChatApp
 
                 if (!string.IsNullOrEmpty(cleanUser))
                 {
+                    if (cleanUser == _username) continue;
                     lstOnlineUsers.Items.Add("Online - " + cleanUser);
                 }
             }
@@ -471,15 +590,61 @@ namespace ChatApp
 
         private void AppendColoredText(string text, Color color, bool bold = false, bool italic = false)
         {
-            rtbChat.SelectionStart = rtbChat.TextLength;
-            rtbChat.SelectionLength = 0;
-            rtbChat.SelectionColor = color;
             FontStyle style = FontStyle.Regular;
             if (bold) style |= FontStyle.Bold;
             if (italic) style |= FontStyle.Italic;
-            rtbChat.SelectionFont = new Font(rtbChat.Font, style);
-            rtbChat.AppendText(text);
+
+            Font textFont = new Font(rtbChat.Font, style);
+            Font emojiFont = new Font("Segoe UI Emoji", rtbChat.Font.Size, FontStyle.Regular);
+
+            var buffer = new StringBuilder();
+            bool bufferIsEmoji = false;
+
+            void Flush()
+            {
+                if (buffer.Length == 0) return;
+                rtbChat.SelectionStart = rtbChat.TextLength;
+                rtbChat.SelectionLength = 0;
+                rtbChat.SelectionColor = color;
+                rtbChat.SelectionFont = bufferIsEmoji ? emojiFont : textFont;
+                rtbChat.AppendText(buffer.ToString());
+                buffer.Clear();
+            }
+
+            int i = 0;
+            while (i < text.Length)
+            {
+                int charLen = char.IsSurrogatePair(text, i) ? 2 : 1;
+                int cp = charLen == 2 ? char.ConvertToUtf32(text, i) : text[i];
+                bool isEmoji = IsEmojiCodePoint(cp);
+
+                if (buffer.Length > 0 && isEmoji != bufferIsEmoji)
+                    Flush();
+
+                bufferIsEmoji = isEmoji;
+                buffer.Append(text, i, charLen);
+                i += charLen;
+            }
+            Flush();
+
             rtbChat.SelectionColor = rtbChat.ForeColor;
+        }
+
+        // Kiểm tra 1 ký tự có phải emoji không
+        private static bool IsEmojiCodePoint(int cp)
+        {
+            return
+                cp == 0x200D ||
+                cp == 0xFE0F || cp == 0xFE0E ||
+                (cp >= 0x1F000 && cp <= 0x1FAFF) ||
+                (cp >= 0x1F1E6 && cp <= 0x1F1FF) ||
+                (cp >= 0x2600 && cp <= 0x27BF) ||
+                (cp >= 0x2B00 && cp <= 0x2BFF) ||
+                (cp >= 0x2300 && cp <= 0x23FF) ||
+                (cp >= 0x2190 && cp <= 0x21FF) ||
+                (cp >= 0x25A0 && cp <= 0x25FF) ||
+                cp == 0x203C || cp == 0x2049 ||
+                cp == 0x24C2;
         }
 
         private void InitializeMyDefaultAvatar()

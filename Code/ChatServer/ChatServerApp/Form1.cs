@@ -109,10 +109,46 @@ namespace ChatServerApp
                         BroadcastBytes(fullPacket, currentUsername);
                         LogMessage($"[FILE] {currentUsername} vừa gửi 1 tệp tin.");
                     }
+                    // XỬ LÝ FILE RIÊNG (0x20: Ảnh, 0x21: Video)
+                    else if (firstByte == 0x20 || firstByte == 0x21)
+                    {
+                        byte[] header = new byte[9];
+                        if (!ReceiveAll(socket, header, 9)) break;
+                        long dataSize = BitConverter.ToInt64(header, 1);
+
+                        byte[] lenByte = new byte[1];
+                        if (!ReceiveAll(socket, lenByte, 1)) break;
+                        int recvLen = lenByte[0];
+                        byte[] recvBytes = new byte[recvLen];
+                        if (!ReceiveAll(socket, recvBytes, recvLen)) break;
+                        string receiver = Encoding.UTF8.GetString(recvBytes);
+
+                        byte[] payload = new byte[dataSize];
+                        if (!ReceiveAll(socket, payload, (int)dataSize)) break;
+
+                        byte fwdMarker = (firstByte == 0x20) ? (byte)0x22 : (byte)0x23;
+                        byte[] senderBytes = Encoding.UTF8.GetBytes(currentUsername);
+                        byte[] fwd = new byte[10 + senderBytes.Length + (int)dataSize];
+                        fwd[0] = fwdMarker;
+                        Array.Copy(BitConverter.GetBytes((long)dataSize), 0, fwd, 1, 8);
+                        fwd[9] = (byte)senderBytes.Length;
+                        Array.Copy(senderBytes, 0, fwd, 10, senderBytes.Length);
+                        Array.Copy(payload, 0, fwd, 10 + senderBytes.Length, (int)dataSize);
+
+                        if (onlineUsers.TryGetValue(receiver, out TcpClient targetClient))
+                        {
+                            SendBytesToOne(targetClient, fwd);
+                            LogMessage($"[FILE RIÊNG] {currentUsername} → {receiver} ({dataSize} bytes)");
+                        }
+                        else if (onlineUsers.TryGetValue(currentUsername, out TcpClient sc))
+                        {
+                            SendToOne(sc, $"WARNING|{receiver} hiện không online!");
+                        }
+                    }
                     // XỬ LÝ NHẬN   CHỮ (TEXT) 
                     else
                     {
-                        byte[] buffer = new byte[512*1024];
+                        byte[] buffer = new byte[512 * 1024];
                         int bytesRead = stream.Read(buffer, 0, buffer.Length);
                         if (bytesRead == 0) break;
 
@@ -169,6 +205,26 @@ namespace ChatServerApp
                                             client.Close();
                                             return;
                                         }
+                                    }
+                                }
+                                break;
+
+                            case "PRIVATE":
+                                if (parts.Length >= 4)
+                                {
+                                    string pSender = parts[1];
+                                    string pReceiver = parts[2];
+                                    string pContent = parts[3];
+                                    LogMessage($"[RIÊNG] {pSender} → {pReceiver}: {pContent}");
+
+                                    if (onlineUsers.TryGetValue(pReceiver, out TcpClient targetClient))
+                                    {
+                                        SendToOne(targetClient, $"PRIVATE|{pSender}|{pContent}");
+                                    }
+                                    else
+                                    {
+                                        if (onlineUsers.TryGetValue(pSender, out TcpClient senderClient))
+                                            SendToOne(senderClient, $"WARNING|{pReceiver} hiện không online!");
                                     }
                                     else // NẾU CHƯA TỒN TẠI TRONG DB
                                     {
@@ -258,6 +314,28 @@ namespace ChatServerApp
             catch { }
         }
 
+        private void SendBytesToOne(TcpClient targetClient, byte[] data)
+        {
+            try
+            {
+                var s = targetClient.GetStream();
+                lock (s) { s.Write(data, 0, data.Length); }
+            }
+            catch { }
+        }
+
+        private bool ReceiveAll(System.Net.Sockets.Socket socket, byte[] buffer, int count)
+        {
+            int total = 0;
+            while (total < count)
+            {
+                int r = socket.Receive(buffer, total, count - total, System.Net.Sockets.SocketFlags.None);
+                if (r == 0) return false;
+                total += r;
+            }
+            return true;
+        }
+
         private void BroadcastString(string rawMessage, string excludeUsername = "")
         {
             if (!rawMessage.EndsWith("\n")) rawMessage += "\n";
@@ -267,7 +345,7 @@ namespace ChatServerApp
             {
                 if (user.Key != excludeUsername)
                 {
-                    try 
+                    try
                     {
 
                         NetworkStream targetStream = user.Value.GetStream();
