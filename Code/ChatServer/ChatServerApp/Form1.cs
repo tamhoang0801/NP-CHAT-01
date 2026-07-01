@@ -127,9 +127,9 @@ namespace ChatServerApp
                             case "LOGIN":
                                 if (parts.Length >= 2)
                                 {
-                                    string requestedName = parts[1];
+                                    string requestedName = parts[1].Trim().Replace("\n", "");
 
-                                    if (CheckAndAutoRegisterUser(requestedName))
+                                    if (CheckUserExists(requestedName))
                                     {
                                         if (onlineUsers.TryAdd(requestedName, client))
                                         {
@@ -137,7 +137,7 @@ namespace ChatServerApp
                                             string myAvatarBase64 = LoadAvatarFromDatabase(currentUsername);
                                             userAvatars[currentUsername] = myAvatarBase64;
 
-                                            byte[] successData = Encoding.UTF8.GetBytes("SUCCESS|OK");
+                                            byte[] successData = Encoding.UTF8.GetBytes("SUCCESS|OK\n");
                                             stream.Write(successData, 0, successData.Length);
                                             Thread.Sleep(100);
 
@@ -170,6 +170,40 @@ namespace ChatServerApp
                                             return;
                                         }
                                     }
+                                    else // NẾU CHƯA TỒN TẠI TRONG DB
+                                    {
+                                        LogMessage($"[TỪ CHỐI] {requestedName} chưa đăng ký tài khoản.");
+                                        byte[] errorData = Encoding.UTF8.GetBytes("ERROR|Tài khoản chưa tồn tại. Vui lòng đăng ký trước!\n");
+                                        stream.Write(errorData, 0, errorData.Length);
+                                        client.Close();
+                                        return;
+                                    }
+                                }
+                                break;
+
+                            case "REGISTER":
+                                if (parts.Length >= 2)
+                                {
+                                    string regName = parts[1].Trim().Replace("\n", "");
+
+                                    if (CheckUserExists(regName))
+                                    {
+                                        byte[] errorData = Encoding.UTF8.GetBytes("ERROR|Tên đăng nhập đã có người sử dụng!\n");
+                                        stream.Write(errorData, 0, errorData.Length);
+                                    }
+                                    else
+                                    {
+                                        // Tạo mới vào DB
+                                        if (CreateNewUser(regName))
+                                        {
+                                            byte[] successData = Encoding.UTF8.GetBytes("REGISTER_OK\n");
+                                            stream.Write(successData, 0, successData.Length);
+                                            LogMessage($"[ĐĂNG KÝ] Đã tạo tài khoản mới: {regName}");
+                                        }
+                                    }
+
+                                    client.Close();
+                                    return;
                                 }
                                 break;
 
@@ -216,6 +250,8 @@ namespace ChatServerApp
         {
             try
             {
+                if (!rawMessage.EndsWith("\n")) rawMessage += "\n";
+
                 byte[] data = Encoding.UTF8.GetBytes(rawMessage);
                 targetClient.GetStream().Write(data, 0, data.Length);
             }
@@ -224,6 +260,8 @@ namespace ChatServerApp
 
         private void BroadcastString(string rawMessage, string excludeUsername = "")
         {
+            if (!rawMessage.EndsWith("\n")) rawMessage += "\n";
+
             byte[] data = Encoding.UTF8.GetBytes(rawMessage);
             foreach (var user in onlineUsers)
             {
@@ -271,47 +309,53 @@ namespace ChatServerApp
             txtPort.Enabled = true;
         }
 
-         private bool CheckAndAutoRegisterUser(string username)
-         {
-         string connectionString = "Server=127.0.0.1; Port=3366; Database=ChatAppDB; Uid=root; Pwd=;";
-         
-         using (MySqlConnection conn = new MySqlConnection(connectionString))
-         {
-         try
-         {
-             conn.Open();
+        private bool CheckUserExists(string username)
+        {
+            string connStr = "Server=127.0.0.1; Port=3366; Database=ChatAppDB; Uid=root; Pwd=;";
+            using (MySqlConnection conn = new MySqlConnection(connStr))
+            {
+                try
+                {
+                    conn.Open();
+                    string query = "SELECT COUNT(*) FROM TblUsers WHERE Username = @user";
+                    using (MySqlCommand cmd = new MySqlCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@user", username);
+                        return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogMessage("[LỖI DATABASE]: " + ex.Message);
+                    return false;
+                }
+            }
+        }
 
-             string checkQuery = "SELECT COUNT(*) FROM TblUsers WHERE Username = @user";
-             using (MySqlCommand cmdCheck = new MySqlCommand(checkQuery, conn))
-             {
-                 cmdCheck.Parameters.AddWithValue("@user", username);
-                 int userCount = Convert.ToInt32(cmdCheck.ExecuteScalar());
+        private bool CreateNewUser(string username)
+        {
+            string connStr = "Server=127.0.0.1; Port=3366; Database=ChatAppDB; Uid=root; Pwd=;";
+            using (MySqlConnection conn = new MySqlConnection(connStr))
+            {
+                try
+                {
+                    conn.Open();
+                    string query = "INSERT INTO TblUsers (Username) VALUES (@user)";
+                    using (MySqlCommand cmd = new MySqlCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@user", username);
+                        cmd.ExecuteNonQuery();
+                        return true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogMessage("[LỖI DATABASE]: " + ex.Message);
+                    return false;
+                }
+            }
+        }
 
-                 if (userCount > 0)
-                 {
-                     return true;
-                 }
-             }
-
-             string insertQuery = "INSERT INTO TblUsers (Username) VALUES (@user)";
-             using (MySqlCommand cmdInsert = new MySqlCommand(insertQuery, conn))
-             {
-                 cmdInsert.Parameters.AddWithValue("@user", username);
-
-                 cmdInsert.ExecuteNonQuery();
-
-                 LogMessage($"[HỆ THỐNG] Đã tự động tạo tài khoản mới cho: {username}");
-             }
-             
-             return true;
-         }
-         catch (Exception ex)
-         {
-             LogMessage("[LỖI DATABASE]: " + ex.Message);
-             return false;
-         }
-     }
- }
         private string LoadAvatarFromDatabase(string username)
         {
             string connStr = "Server=127.0.0.1; Port=3366; Database=ChatAppDB; Uid=root; Pwd=;";
@@ -328,8 +372,10 @@ namespace ChatServerApp
 
                         if (result != null && result != DBNull.Value)
                         {
-                            byte[] imageBytes = (byte[])result;
-                            return Convert.ToBase64String(imageBytes);
+                            if (result is byte[] imageBytes)
+                                return Convert.ToBase64String(imageBytes);
+                            else if (result is string base64Str)
+                                return base64Str;
                         }
                     }
                 }
@@ -353,7 +399,7 @@ namespace ChatServerApp
                 using (MySqlConnection conn = new MySqlConnection(connStr))
                 {
                     conn.Open();
-                    string query = "UPDATE tblusers SET Avatar = @avt WHERE Username = @user";
+                    string query = "UPDATE TblUsers SET Avatar = @avt WHERE Username = @user";
 
                     using (MySqlCommand cmd = new MySqlCommand(query, conn))
                     {
@@ -397,8 +443,14 @@ namespace ChatServerApp
         {
             foreach (var entry in userAvatars)
             {
-                string updateMessage = AvatarMessageHelper.BuildUpdateMessage(entry.Key, entry.Value);
-                SendToOne(client, updateMessage);
+                // Chỉ gửi nếu tài khoản đó thực sự có ảnh
+                if (!string.IsNullOrEmpty(entry.Value))
+                {
+                    string updateMessage = AvatarMessageHelper.BuildUpdateMessage(entry.Key, entry.Value);
+                    SendToOne(client, updateMessage);
+
+                    Thread.Sleep(100);
+                }
             }
         }
 

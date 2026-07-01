@@ -1,5 +1,7 @@
 using System;
 using System.Drawing;
+using System.Net.Sockets;
+using System.Text;
 using System.Windows.Forms;
 
 namespace ChatApp
@@ -112,6 +114,48 @@ namespace ChatApp
             TextBox tb = sender as TextBox;
             if (tb != null)
                 tb.BackColor = Color.White;
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            string username = txtUsername.Text.Trim();
+            if (string.IsNullOrEmpty(username))
+            {
+                MessageBox.Show("Vui lòng nhập tên tài khoản muốn đăng ký!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            try
+            {
+                TcpClient tempClient = new TcpClient("127.0.0.1", 9999); // Thay port đúng với của bạn
+                NetworkStream stream = tempClient.GetStream();
+
+                // Gửi lệnh Đăng ký
+                string msg = $"REGISTER|{username}\n";
+                byte[] data = Encoding.UTF8.GetBytes(msg);
+                stream.Write(data, 0, data.Length);
+
+                // Chờ Server trả lời
+                byte[] buffer = new byte[1024];
+                int bytesRead = stream.Read(buffer, 0, buffer.Length);
+                string response = Encoding.UTF8.GetString(buffer, 0, bytesRead).Trim();
+
+                if (response == "REGISTER_OK")
+                {
+                    MessageBox.Show("Đăng ký tài khoản thành công! Bây giờ bạn có thể đăng nhập.", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                else if (response.StartsWith("ERROR|"))
+                {
+                    string errorMsg = response.Substring(6); // Bỏ chữ "ERROR|" đi
+                    MessageBox.Show(errorMsg, "Lỗi đăng ký", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+
+                tempClient.Close();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Không thể kết nối đến Server: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
     }
 }
