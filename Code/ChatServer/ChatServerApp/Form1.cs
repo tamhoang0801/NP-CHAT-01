@@ -180,7 +180,6 @@ namespace ChatServerApp
                                             LogMessage($"[ĐĂNG NHẬP] {currentUsername} đã vào phòng.");
                                             UpdateStatusUI();
 
-                                            // Gửi danh sách Online mới nhất cho tất cả Client
                                             string userList = string.Join(",", onlineUsers.Keys);
                                             BroadcastString($"UPDATE_ONLINE|{userList}");
                                             Thread.Sleep(50);
@@ -193,18 +192,22 @@ namespace ChatServerApp
                                             string updateMsg = AvatarMessageHelper.BuildUpdateMessage(currentUsername, myAvatarBase64);
                                             BroadcastString(updateMsg, currentUsername);
                                         }
-
                                         else
                                         {
-                                            LogMessage($"[TỪ CHỐI] {currentUsername} đăng nhập trùng tên.");
-
-                                            //Gửi tb 'ERROR'về cho Client
-                                            byte[] errorData = Encoding.UTF8.GetBytes("ERROR|Tên đăng nhập đã tồn tại!");
+                                            LogMessage($"[TỪ CHỐI] {requestedName} đăng nhập trùng tên.");
+                                            byte[] errorData = Encoding.UTF8.GetBytes("ERROR|Tên đăng nhập đã tồn tại\n");
                                             stream.Write(errorData, 0, errorData.Length);
-
                                             client.Close();
                                             return;
                                         }
+                                    }
+                                    else
+                                    {
+                                        LogMessage($"[TỪ CHỐI] {requestedName} chưa đăng ký tài khoản.");
+                                        byte[] errorData = Encoding.UTF8.GetBytes("ERROR|Tài khoản chưa tồn tại. Vui lòng đăng ký trước!\n");
+                                        stream.Write(errorData, 0, errorData.Length);
+                                        client.Close();
+                                        return;
                                     }
                                 }
                                 break;
@@ -215,7 +218,7 @@ namespace ChatServerApp
                                     string pSender = parts[1];
                                     string pReceiver = parts[2];
                                     string pContent = parts[3];
-                                    LogMessage($"[RIÊNG] {pSender} → {pReceiver}: {pContent}");
+                                    LogMessage($"[RIÊNG] {pSender} -> {pReceiver}: {pContent}");
 
                                     if (onlineUsers.TryGetValue(pReceiver, out TcpClient targetClient))
                                     {
@@ -225,14 +228,6 @@ namespace ChatServerApp
                                     {
                                         if (onlineUsers.TryGetValue(pSender, out TcpClient senderClient))
                                             SendToOne(senderClient, $"WARNING|{pReceiver} hiện không online!");
-                                    }
-                                    else // NẾU CHƯA TỒN TẠI TRONG DB
-                                    {
-                                        LogMessage($"[TỪ CHỐI] {requestedName} chưa đăng ký tài khoản.");
-                                        byte[] errorData = Encoding.UTF8.GetBytes("ERROR|Tài khoản chưa tồn tại. Vui lòng đăng ký trước!\n");
-                                        stream.Write(errorData, 0, errorData.Length);
-                                        client.Close();
-                                        return;
                                     }
                                 }
                                 break;
