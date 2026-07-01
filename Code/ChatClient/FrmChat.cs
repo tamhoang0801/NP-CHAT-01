@@ -585,15 +585,62 @@ namespace ChatApp
 
         private void AppendColoredText(string text, Color color, bool bold = false, bool italic = false)
         {
-            rtbChat.SelectionStart = rtbChat.TextLength;
-            rtbChat.SelectionLength = 0;
-            rtbChat.SelectionColor = color;
+            // Chữ thường dùng font gốc (Consolas), emoji vẽ riêng bằng Segoe UI Emoji
             FontStyle style = FontStyle.Regular;
             if (bold) style |= FontStyle.Bold;
             if (italic) style |= FontStyle.Italic;
-            rtbChat.SelectionFont = new Font(rtbChat.Font, style);
-            rtbChat.AppendText(text);
+
+            Font textFont = new Font(rtbChat.Font, style);
+            Font emojiFont = new Font("Segoe UI Emoji", rtbChat.Font.Size, FontStyle.Regular);
+
+            var buffer = new StringBuilder();
+            bool bufferIsEmoji = false;
+
+            void Flush()
+            {
+                if (buffer.Length == 0) return;
+                rtbChat.SelectionStart = rtbChat.TextLength;
+                rtbChat.SelectionLength = 0;
+                rtbChat.SelectionColor = color;
+                rtbChat.SelectionFont = bufferIsEmoji ? emojiFont : textFont;
+                rtbChat.AppendText(buffer.ToString());
+                buffer.Clear();
+            }
+
+            int i = 0;
+            while (i < text.Length)
+            {
+                int charLen = char.IsSurrogatePair(text, i) ? 2 : 1;
+                int cp = charLen == 2 ? char.ConvertToUtf32(text, i) : text[i];
+                bool isEmoji = IsEmojiCodePoint(cp);
+
+                if (buffer.Length > 0 && isEmoji != bufferIsEmoji)
+                    Flush();
+
+                bufferIsEmoji = isEmoji;
+                buffer.Append(text, i, charLen);
+                i += charLen;
+            }
+            Flush();
+
             rtbChat.SelectionColor = rtbChat.ForeColor;
+        }
+
+        // Kiểm tra 1 ký tự có phải emoji không
+        private static bool IsEmojiCodePoint(int cp)
+        {
+            return
+                cp == 0x200D ||
+                cp == 0xFE0F || cp == 0xFE0E ||
+                (cp >= 0x1F000 && cp <= 0x1FAFF) ||
+                (cp >= 0x1F1E6 && cp <= 0x1F1FF) ||
+                (cp >= 0x2600 && cp <= 0x27BF) ||
+                (cp >= 0x2B00 && cp <= 0x2BFF) ||
+                (cp >= 0x2300 && cp <= 0x23FF) ||
+                (cp >= 0x2190 && cp <= 0x21FF) ||
+                (cp >= 0x25A0 && cp <= 0x25FF) ||
+                cp == 0x203C || cp == 0x2049 ||
+                cp == 0x24C2;
         }
 
         private void InitializeMyDefaultAvatar()

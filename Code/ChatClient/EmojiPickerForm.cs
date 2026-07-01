@@ -30,7 +30,7 @@ namespace ChatApp
             };
 
             this.Text = "Chọn Emoji";
-            this.Size = new Size(380, 300);
+            this.Size = new Size(380, 344);
             this.FormBorderStyle = FormBorderStyle.FixedToolWindow;
             this.StartPosition = FormStartPosition.Manual;
             this.ShowInTaskbar = false;
@@ -61,11 +61,39 @@ namespace ChatApp
                 btn.FlatAppearance.BorderColor = Color.FromArgb(220, 220, 220);
                 btn.MouseEnter += (s, e) => btn.BackColor = Color.FromArgb(240, 240, 245);
                 btn.MouseLeave += (s, e) => btn.BackColor = Color.White;
-                btn.Click += (s, e) => { InsertEmoji(emoji); this.Close(); };
+                btn.Click += (s, e) => { InsertEmoji(emoji); };
                 _flowPanel.Controls.Add(btn);
             }
 
+            // Thanh dưới cùng chứa nút Đóng
+            var pnlBottom = new Panel
+            {
+                Dock = DockStyle.Bottom,
+                Height = 44,
+                BackColor = Color.White,
+                Padding = new Padding(8)
+            };
+
+            var btnClose = new Button
+            {
+                Text = "Đóng",
+                Dock = DockStyle.Right,
+                Width = 90,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(224, 224, 224),
+                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnClose.FlatAppearance.BorderColor = Color.FromArgb(180, 180, 180);
+            btnClose.Click += (s, e) => this.Close();
+            pnlBottom.Controls.Add(btnClose);
+
+            // Thêm _flowPanel TRƯỚC, pnlBottom SAU (để nút Đóng nằm đúng dưới cùng)
             this.Controls.Add(_flowPanel);
+            this.Controls.Add(pnlBottom);
+
+            // Nhấn Esc cũng đóng được
+            this.CancelButton = btnClose;
         }
 
         private void InsertEmoji(string emoji)
