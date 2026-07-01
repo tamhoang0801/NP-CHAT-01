@@ -191,8 +191,8 @@ namespace ChatApp
         private List<string> SplitStickyPackets(string rawData)
         {
             List<string> messages = new List<string>();
-            string[] prefixes = { "UPDATE_ONLINE|", "BROADCAST|", "AVATAR_UPDATE|", "ERROR|" };
-            
+            string[] prefixes = { "UPDATE_ONLINE|", "BROADCAST|", "AVATAR_UPDATE|", "ERROR|", "WARNING|" };
+
             int currentIndex = 0;
             while (currentIndex < rawData.Length)
             {
@@ -243,7 +243,6 @@ namespace ChatApp
                 string messageContent = tokens[1];
                 string time = DateTime.Now.ToString("HH:mm");
 
-                // Nếu là tin nhắn của hệ thống
                 if (messageContent.StartsWith("[Hệ thống]"))
                 {
                     AppendSystemMessage(messageContent);
@@ -266,9 +265,9 @@ namespace ChatApp
                             MessageBox.Show("Server đã đóng cửa!.", "Mất kết nối", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
                             Application.Restart();
-                            Environment.Exit(0); // Ép hệ thống dọn dẹp sạch tiến trình cũ
+                            Environment.Exit(0);
                         }));
-                        return; // Cắt đứt luồng ngầm
+                        return;
                     }
 
                     int colonIndex = messageContent.IndexOf(':');
@@ -280,7 +279,6 @@ namespace ChatApp
                             string senderName = messageContent.Substring(0, colonIndex).Trim();
                             string actualContent = messageContent.Substring(colonIndex + 1).Trim();
                                          
-                            // In ra màn hình
                             AppendOtherMessage(senderName, actualContent, time);
                         }
                     }
@@ -300,12 +298,19 @@ namespace ChatApp
                     Environment.Exit(0);
                 }));
             }
+            else if (command == "WARNING" && tokens.Length > 1)
+            {
+                this.Invoke(new Action(() =>
+                {
+                    MessageBox.Show(tokens[1], "Thông báo hệ thống", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }));
+            }
         }
 
 
         private void HandleDisconnect(string reason)
         {
-            if (this.IsDisposed || !this.IsHandleCreated) return; // Nếu form đã đóng từ trước thì thôi bỏ qua
+            if (this.IsDisposed || !this.IsHandleCreated) return; // Nếu form đã đóng từ trước thì bỏ qua
 
             if (this.InvokeRequired)
             {
@@ -366,7 +371,7 @@ namespace ChatApp
                         byte[] sizeBytes = BitConverter.GetBytes((long)fileData.Length);
                         Array.Copy(sizeBytes, 0, header, 1, 8);
 
-                        // Bắn lên Server
+                        // Gui lên Server
                         _stream.Write(header, 0, 9);
                         _stream.Write(fileData, 0, fileData.Length);
 

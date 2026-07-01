@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
+using MySql.Data.MySqlClient;
 
 namespace ChatServerApp
 {
@@ -111,7 +112,7 @@ namespace ChatServerApp
                     // XỬ LÝ NHẬN   CHỮ (TEXT) 
                     else
                     {
-                        byte[] buffer = new byte[2048];
+                        byte[] buffer = new byte[512*1024];
                         int bytesRead = stream.Read(buffer, 0, buffer.Length);
                         if (bytesRead == 0) break;
 
@@ -133,6 +134,12 @@ namespace ChatServerApp
                                         if (onlineUsers.TryAdd(requestedName, client))
                                         {
                                             currentUsername = requestedName;
+                                            string myAvatarBase64 = LoadAvatarFromDatabase(currentUsername);
+                                            userAvatars[currentUsername] = myAvatarBase64;
+
+                                            byte[] successData = Encoding.UTF8.GetBytes("SUCCESS|OK");
+                                            stream.Write(successData, 0, successData.Length);
+                                            Thread.Sleep(100);
 
                                             LogMessage($"[ĐĂNG NHẬP] {currentUsername} đã vào phòng.");
                                             UpdateStatusUI();
@@ -142,7 +149,15 @@ namespace ChatServerApp
                                             BroadcastString($"UPDATE_ONLINE|{userList}");
                                             Thread.Sleep(50);
                                             BroadcastString($"BROADCAST|[Hệ thống] {currentUsername} đã vào phòng!");
+                                            Thread.Sleep(50);
+
+                                            SendStoredAvatarsToClient(client);
+                                            Thread.Sleep(50);
+
+                                            string updateMsg = AvatarMessageHelper.BuildUpdateMessage(currentUsername, myAvatarBase64);
+                                            BroadcastString(updateMsg, currentUsername);
                                         }
+
                                         else
                                         {
                                             LogMessage($"[TỪ CHỐI] {currentUsername} đăng nhập trùng tên.");
@@ -150,10 +165,11 @@ namespace ChatServerApp
                                             //Gửi tb 'ERROR'về cho Client
                                             byte[] errorData = Encoding.UTF8.GetBytes("ERROR|Tên đăng nhập đã tồn tại!");
                                             stream.Write(errorData, 0, errorData.Length);
-                                            
+
                                             client.Close();
                                             return;
                                         }
+                                    }
                                 }
                                 break;
 
@@ -237,20 +253,15 @@ namespace ChatServerApp
             {
                 try
                 {
-                    // Bắn thêm một câu chót để Client biết đường mà tự cút (Tùy chọn)
                     byte[] endMsg = Encoding.UTF8.GetBytes("BROADCAST|[Hệ thống] Server đã đóng cửa!|");
                     user.Value.GetStream().Write(endMsg, 0, endMsg.Length);
 
-                    // Cắt đứt đường ống
                     user.Value.Close();
                 }
-                catch
-                {
-                    // Nếu thằng này lỗi rồi thì lơ đi, lôi đầu thằng tiếp theo ra đóng!
-                }
+                catch { }
             }
             onlineUsers.Clear();
-            try { server?.Stop(); } catch { } // Chống sập lúc Stop Server
+            try { server?.Stop(); } catch { }
 
             LogMessage("[HỆ THỐNG] Server đã dừng.");
             UpdateStatusUI();
@@ -301,9 +312,96 @@ namespace ChatServerApp
          }
      }
  }
+        private string LoadAvatarFromDatabase(string username)
+        {
+            string connStr = "Server=127.0.0.1; Port=3366; Database=ChatAppDB; Uid=root; Pwd=;";
+            using (MySqlConnection conn = new MySqlConnection(connStr))
+            {
+                try
+                {
+                    conn.Open();
+                    string query = "SELECT Avatar FROM TblUsers WHERE Username = @user";
+                    using (MySqlCommand cmd = new MySqlCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@user", username);
+                        object result = cmd.ExecuteScalar();
 
+                        if (result != null && result != DBNull.Value)
+                        {
+                            byte[] imageBytes = (byte[])result;
+                            return Convert.ToBase64String(imageBytes);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogMessage($"[LỖI TẢI AVATAR TỪ DB]: {ex.Message}");
+                }
+            }
+            return "";
+        }
 
-        
+        private void HandleAvatarUpload(NetworkStream stream, string partialData)
+        {
+            string fullMessage = AvatarMessageHelper.ReadCompleteAvatarMessage(stream, partialData);
+            if (!AvatarMessageHelper.TryParse(fullMessage, out string username, out string base64))
+                return;
+
+            try
+            {
+                string connStr = "Server=127.0.0.1; Port=3366; Database=ChatAppDB; Uid=root; Pwd=;";
+                using (MySqlConnection conn = new MySqlConnection(connStr))
+                {
+                    conn.Open();
+                    string query = "UPDATE tblusers SET Avatar = @avt WHERE Username = @user";
+
+                    using (MySqlCommand cmd = new MySqlCommand(query, conn))
+                    {
+                        if (string.IsNullOrEmpty(base64))
+                        {
+                            cmd.Parameters.AddWithValue("@avt", DBNull.Value);
+                        }
+                        else
+                        {
+                            byte[] imageBytes = Convert.FromBase64String(base64);
+                            cmd.Parameters.AddWithValue("@avt", imageBytes);
+                        }
+
+                        cmd.Parameters.AddWithValue("@user", username);
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+
+                userAvatars[username] = base64;
+                LogMessage($"[AVATAR] {username} da cap nhat avatar.");
+
+                string updateMessage = AvatarMessageHelper.BuildUpdateMessage(username, base64);
+                BroadcastString(updateMessage);
+            }
+            catch (Exception ex)
+            {
+                LogMessage($"[LỖI LƯU AVATAR DATABASE]: {ex.Message}");
+
+                if (ex.Message.Contains("max_allowed_packet"))
+                {
+                    if (onlineUsers.TryGetValue(username, out TcpClient targetClient))
+                    {
+                        SendToOne(targetClient, "WARNING|Kích thước ảnh quá lớn! Vui lòng chọn ảnh dung lượng nhỏ hơn.");
+                    }
+                }
+
+            }
+        }
+
+        private void SendStoredAvatarsToClient(TcpClient client)
+        {
+            foreach (var entry in userAvatars)
+            {
+                string updateMessage = AvatarMessageHelper.BuildUpdateMessage(entry.Key, entry.Value);
+                SendToOne(client, updateMessage);
+            }
+        }
+
 
         private void LogMessage(string message)
         {
@@ -344,28 +442,6 @@ namespace ChatServerApp
                     try { user.Value.GetStream().Write(data, 0, data.Length); }
                     catch { }
                 }
-            }
-        }
-
-        private void HandleAvatarUpload(NetworkStream stream, string partialData)
-        {
-            string fullMessage = AvatarMessageHelper.ReadCompleteAvatarMessage(stream, partialData);
-            if (!AvatarMessageHelper.TryParse(fullMessage, out string username, out string base64))
-                return;
-
-            userAvatars[username] = base64;
-            LogMessage($"[AVATAR] {username} da cap nhat avatar.");
-
-            string updateMessage = AvatarMessageHelper.BuildUpdateMessage(username, base64);
-            BroadcastString(updateMessage);
-        }
-
-        private void SendStoredAvatarsToClient(TcpClient client)
-        {
-            foreach (var entry in userAvatars)
-            {
-                string updateMessage = AvatarMessageHelper.BuildUpdateMessage(entry.Key, entry.Value);
-                SendToOne(client, updateMessage);
             }
         }
     }
