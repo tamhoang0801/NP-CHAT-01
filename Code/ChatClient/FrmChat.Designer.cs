@@ -354,19 +354,9 @@ namespace ChatApp
 
 
 
-
-
-
             pnlFileBar.Controls.Add(btnSendImage);
 
             pnlFileBar.Controls.Add(btnSendVideo);
-
-
-
-
-
-
-
 
 
             pnlCenter.Controls.Add(rtbChat);
@@ -395,10 +385,6 @@ namespace ChatApp
                 new Size(
                     1200,
                     750);
-
-
-
-
             MinimumSize =
                 new Size(
                     1000,
@@ -469,22 +455,15 @@ namespace ChatApp
             txtMessage.Width =
                 pnlInput.Width - 260;
 
-
-
-
             btnEmoji.Location =
                 new Point(
                     pnlInput.Width - 170,
                     y);
 
-
-
-
             btnSend.Location =
                 new Point(
                     pnlInput.Width - 110,
                     y);
-
         }
     }
 }

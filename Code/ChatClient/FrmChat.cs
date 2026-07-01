@@ -311,8 +311,6 @@ namespace ChatApp
                 }));
             }
         }
-
-
         private void HandleDisconnect(string reason)
         {
             if (this.IsDisposed || !this.IsHandleCreated) return; // Nếu form đã đóng từ trước thì bỏ qua
@@ -357,8 +355,6 @@ namespace ChatApp
                 SendTextMessage();
             }
         }
-
-
         private void SendFile(byte typeCode, string filter)
         {
             using (OpenFileDialog ofd = new OpenFileDialog() { Filter = filter })
