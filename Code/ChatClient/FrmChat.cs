@@ -75,6 +75,11 @@ namespace ChatApp
             this.btnChooseAvatar.MouseLeave += (s, e) => this.btnChooseAvatar.BackColor = System.Drawing.Color.FromArgb(224, 224, 224);
 
         }
+        private void btnEmoji_Click(object sender, EventArgs e)
+        {
+            // TODO: mở emoji picker hoặc insert emoji
+            txtMessage.Text += "😊";
+        }
 
         private void FrmChat_Load(object sender, EventArgs e)
         {
